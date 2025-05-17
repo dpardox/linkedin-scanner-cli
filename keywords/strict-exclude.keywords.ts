@@ -4,7 +4,7 @@ import { dotnetKeywords } from './dotnet.keywords';
 import { CMSKeywords } from './cms.keywords';
 import { pythonKeywords } from './python.keywords';
 import { reactKeywords } from './react.keywords';
-
+import { USCitizenshipKeywords } from './us-citizenship.keywords';
 
 export const strictExcludeKeywords = [
   ...fluentEnglishKeywords,
@@ -13,23 +13,17 @@ export const strictExcludeKeywords = [
   ...pythonKeywords,
   ...reactKeywords,
   ...CMSKeywords,
+  ...USCitizenshipKeywords,
 
   // citizenship
-  'U.S. Citizen or Green Card holder (no C2C or visa sponsorship)',
   'Postulación válida solamente para Chile y Perú',
   'remote position for people located in Spain',
-  'US Citizens and Green Card Holders ONLY',
+  'U.S. Citizen or Green Card holder (no C2C or visa sponsorship)',
   'this role remotely from any EU country',
   'SOLO CANDIDATOS QUE VIVEN EN ESPAÑA',
-  'US Citizens (Only USA Applicants)',
-  'US citizen or permanent resident',
   'residir en MADRID o alrededores',
   'Indispensable vivir en España',
   'Permiso de trabajo en España',
-  'MUST BE A US CITIZEN',
-  '(U.S.-based only)',
-  'EU Citizen only',
-  '(US Only)',
 
   // backend
   'Software Engineer in Support',
@@ -44,6 +38,7 @@ export const strictExcludeKeywords = [
   'Programming in high-level languages such as Go',
   'Golang, Python, Java',
   'experience with Go',
+  'Proficiency in Go',
 
   //
   'ServiceNow',

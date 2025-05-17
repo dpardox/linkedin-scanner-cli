@@ -32,8 +32,7 @@
     "baseUrl": "./",                                  /* Specify the base directory to resolve non-relative module names. */
     "paths": {
       "@apps/*":        [ "src/apps/*" ],
-      "@config/*":      [ "src/config/*" ],
-      "@keywords/*":    [ "src/config/keywords/*" ],
+      "@keywords/*":    [ "keywords/*" ],
       "@core/*":        [ "src/core/*" ],
       "@interfaces/*":  [ "src/interfaces/*" ],
       "@plugins/*":     [ "src/plugins/*" ],
@@ -120,6 +119,7 @@
     "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
   },
   "include": [
+    "keywords/**/*.ts",
     "src/**/*.ts",
     "config.scraper.ts",
     "config.scraper.template.ts"

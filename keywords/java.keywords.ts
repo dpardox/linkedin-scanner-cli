@@ -46,6 +46,7 @@ export const javaKeywords = [
   'Desarrollador Java',
   'Spring framework',
   'Dominio de Java',
+  'Java Spring',
   'Spring Boot',
   'springboot',
   'Sr. Java',

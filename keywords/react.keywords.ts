@@ -13,9 +13,11 @@ export const reactKeywords = [
   'React Native Developer',
   'with a focus on React',
   'React Native Engineer',
+  'Expertise in React18',
   'Experiencia en React',
   'expert-level React',
   'ReactJS (Avanzado)',
+  'features in React',
   'Senior ReactJS',
   'React Native',
 ].filter(Boolean);

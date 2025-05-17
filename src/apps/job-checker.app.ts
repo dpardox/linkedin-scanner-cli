@@ -1,4 +1,4 @@
-import { jobSearchConfigs } from '@config/config';
+import { jobSearchConfigs } from 'config.scraper';
 import { JobsSearchPage } from '@core/pages/jobs-search.page';
 import { ChromiumBrowser } from '@core/browsers/chromium.browser';
 import { LoginPage } from '@core/pages/login.page';
