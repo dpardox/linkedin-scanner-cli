@@ -1,0 +1,6 @@
+coverage/
+db/
+logs/
+node_modules/
+.env
+config.scraper.ts
