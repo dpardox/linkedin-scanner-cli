@@ -68,6 +68,22 @@ describe('StoragePlugin', () => {
     }).toThrow(`Record with ID non-existing-id does not exist.`);
   });
 
+  test('Should upsert a job entry', () => {
+    job.title = 'Upserted Job';
+    storagePlugin.upsert(job.id, job);
+
+    const record = storagePlugin.findById(job.id);
+    expect(record).toEqual(job);
+  });
+
+  test('Should create a job entry if it does not exist during upsert', () => {
+    const newJob = { ...job, id: '3', title: 'New Job' };
+    storagePlugin.upsert(newJob.id, newJob);
+
+    const record = storagePlugin.findById(newJob.id);
+    expect(record).toEqual(newJob);
+  });
+
   test('Should delete a job entry', () => {
     const deletedJob = storagePlugin.delete(job.id);
     expect(deletedJob).toEqual(job);

@@ -47,35 +47,28 @@ export class JobCheckerApp {
         let jobs = await jobsSearchPage.getJobs();
 
         for (const job of jobs) {
+          this.logger.br();
+
           const jobEntry = this.jobStorage.findById(job);
           if (jobEntry && jobEntry.status !== JobStatus.pending) {
-            this.logger.warn('Job already processed: %s', job);
+            this.logger.warn('Job "%s" already processed!', job);
             continue;
           }
-
-          if (jobEntry && jobEntry.status === JobStatus.pending) {
-            this.jobStorage.delete(job); // TODO (dpardo): use upsert
-          }
-
-          this.logger.br();
 
           if (await jobsSearchPage.isEmptyJob(job)) continue;
 
           await jobsSearchPage.selectJob(job);
 
-
-          // TODO (dpardo): skip if has below code .artdeco-inline-feedback__message 'No longer accepting applications'
-
           const { id, title, link, country, content, description, emails, highSkillsMatch, isClosed, raw } = await jobsSearchPage.getJobDetails(job); // TODO (dpardo): use job type
 
-          this.jobStorage.create({
-            id,
+          this.jobStorage.upsert(id, {
             title: raw.title,
             location: raw.country,
-            description: raw.content,
+            description: raw.content, // TODO (dpardo): remove
             url: link,
             date: new Date(),
             status: JobStatus.pending,
+            // TODO (dpardo): add other fields
           });
 
           if (await jobsSearchPage.isDissmissedJob(job)) {

@@ -77,6 +77,14 @@ export class StoragePlugin<T extends { id: ID }, ID = string> implements Storage
     return this.findById(id) as T;
   }
 
+  public upsert(id: ID, data: Partial<T>): T | null {
+    if (this.exists(id)) {
+      return this.update(id, data);
+    } else {
+      return this.create({ ...data, id } as T);
+    }
+  }
+
   public delete(id: ID): T | null {
     if (!this.exists(id)) throw new Error(`Record with ID ${id} does not exist.`);
 
