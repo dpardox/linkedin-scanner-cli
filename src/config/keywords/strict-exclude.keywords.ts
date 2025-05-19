@@ -5,6 +5,7 @@ import { CMSKeywords } from './cms.keywords';
 import { pythonKeywords } from './python.keywords';
 import { reactKeywords } from './react.keywords';
 import { USCitizenshipKeywords } from './us-citizenship.keywords';
+import { spainCitizenshipKeywords } from './spain-citizenship.keywords';
 
 export const strictExcludeKeywords = [
   ...fluentEnglishKeywords,
@@ -14,16 +15,12 @@ export const strictExcludeKeywords = [
   ...reactKeywords,
   ...CMSKeywords,
   ...USCitizenshipKeywords,
+  ...spainCitizenshipKeywords,
 
   // citizenship
   'Postulación válida solamente para Chile y Perú',
-  'remote position for people located in Spain',
-  'U.S. Citizen or Green Card holder (no C2C or visa sponsorship)',
   'this role remotely from any EU country',
-  'SOLO CANDIDATOS QUE VIVEN EN ESPAÑA',
-  'residir en MADRID o alrededores',
-  'Indispensable vivir en España',
-  'Permiso de trabajo en España',
+
 
   // backend
   'Software Engineer in Support',
@@ -120,4 +117,7 @@ export const strictExcludeKeywords = [
 
   // c++
   'C++ development skills',
+
+  // genexus
+  'Desarrollador Genexus',
 ].filter(Boolean);

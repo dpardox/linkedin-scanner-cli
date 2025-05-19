@@ -1,4 +1,5 @@
 export const USCitizenshipKeywords = [
+  'U.S. Citizen or Green Card holder (no C2C or visa sponsorship)',
   'ONLY FOR CANDIDATES BASED IN UNITED STATES',
   'US Citizens and Green Card Holders ONLY',
   'US Citizens (Only USA Applicants)',

@@ -40,6 +40,7 @@ export const javaKeywords = [
   'Desarrolladores/as Java',
   'especialmente en Java',
   'proficient with Java',
+  'SR Full Stack - Java',
   'Experience with Java',
   'framework de Spring',
   'proficiency in Java',
