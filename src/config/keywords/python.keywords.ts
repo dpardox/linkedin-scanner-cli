@@ -16,6 +16,7 @@ export const pythonKeywords = [
   'Proficient in Python',
   'Strong Python skills',
   'mastery with Python',
+  'Python Specialist',
   'Python Developer',
   'Python y Flask',
 ].filter(Boolean);

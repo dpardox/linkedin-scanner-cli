@@ -135,7 +135,6 @@ export const excludeKeywords = [
   // Languages
   'cobol',
   'Golang',
-  'ruby on rails',
 
   // Frameworks
 

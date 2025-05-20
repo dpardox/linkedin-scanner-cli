@@ -6,12 +6,14 @@ import { pythonKeywords } from './python.keywords';
 import { reactKeywords } from './react.keywords';
 import { USCitizenshipKeywords } from './us-citizenship.keywords';
 import { spainCitizenshipKeywords } from './spain-citizenship.keywords';
+import { golangKeywords } from './golang.keywords';
 
 export const strictExcludeKeywords = [
   ...fluentEnglishKeywords,
   ...dotnetKeywords,
   ...javaKeywords,
   ...pythonKeywords,
+  ...golangKeywords,
   ...reactKeywords,
   ...CMSKeywords,
   ...USCitizenshipKeywords,
@@ -31,12 +33,6 @@ export const strictExcludeKeywords = [
   // practices
   'Practicante de desarrollo',
 
-  // Golang
-  'Programming in high-level languages such as Go',
-  'Golang, Python, Java',
-  'experience with Go',
-  'Proficiency in Go',
-
   //
   'ServiceNow',
 
@@ -55,8 +51,7 @@ export const strictExcludeKeywords = [
   'experience with Salesforce',
 
   // Ruby on rails
-  'backend development with frameworks like Ruby on Rails',
-  'Ruby on Rails Engineer',
+  'ruby on rails',
 
   //
   'Shelf Digital Architect',
@@ -120,4 +115,10 @@ export const strictExcludeKeywords = [
 
   // genexus
   'Desarrollador Genexus',
+
+  // perl
+  'Perl Developer',
+
+  // visual foxpro
+  'Visual FoxPro',
 ].filter(Boolean);

@@ -54,6 +54,7 @@ export const dotnetKeywords = [
   '.NET Developer',
   'Developer .NET',
   'Hands on .NET',
+  'sólidos en C#',
   'entorno .NET',
   'Expert in C#',
   'Integrate C#',
