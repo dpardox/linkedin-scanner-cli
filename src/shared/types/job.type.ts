@@ -5,7 +5,8 @@ export type Job = {
   title: string;
   description: string;
   location: string;
-  url: string;
-  date: Date;
+  highSkillsMatch: boolean;
+  isClosed: boolean;
   status: JobStatus;
+  createdAt: Date;
 };

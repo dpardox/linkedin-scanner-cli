@@ -1,24 +1,25 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { StoragePlugin } from './storage.plugin';
+import { JSONStoragePlugin } from './json-storage.plugin';
 import fs from 'fs';
 import { Job } from '../shared/types/job.type';
 
 describe('StoragePlugin', () => {
 
-  let storagePlugin: StoragePlugin<Job, string>;
+  let storagePlugin: JSONStoragePlugin<Job, string>;
 
   const job: Job = {
     id: '1',
     title: 'Test Job',
     location: 'Test Location',
     description: 'Test Description',
-    url: 'http://test.com/job/1',
-    date: new Date(),
+    highSkillsMatch: false,
+    isClosed: false,
     status: 'new',
+    createdAt: new Date(),
   };
 
   beforeAll(() => {
-    storagePlugin = new StoragePlugin<Job, string>(`test-${Date.now()}`);
+    storagePlugin = new JSONStoragePlugin<Job, string>(`test-${Date.now()}`);
   });
 
   afterAll(() => {
@@ -35,7 +36,7 @@ describe('StoragePlugin', () => {
 
     const data = fs.readFileSync(storagePlugin.path, 'utf-8');
     const record = JSON.parse(data).at(-1);
-    expect({ ...record, date: new Date(record.date) }).toEqual(job);
+    expect({ ...record, createdAt: new Date(record.createdAt) }).toEqual(job);
   });
 
   test('Should throw an error when creating a job entry with the same ID', () => {

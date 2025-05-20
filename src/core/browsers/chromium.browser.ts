@@ -14,7 +14,7 @@ export class ChromiumBrowser {
 
 
   public async lunch(): Promise<void> {
-    this.logger.info('🌐 Launching browser...');
+    this.logger.info('Launching browser...');
 
     const browser = await chromium.launch(
       {
@@ -38,7 +38,7 @@ export class ChromiumBrowser {
       }
     );
 
-    this.logger.info('🌐 Launching browser context...');
+    this.logger.info('Launching browser context...');
     const context = await browser.newContext({
       userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
       viewport: { width: 1280, height: 600 },
@@ -47,7 +47,7 @@ export class ChromiumBrowser {
       hasTouch: false,
     });
 
-    this.logger.info('🌐 Adding LinkedIn Cookie...');
+    this.logger.info('Adding LinkedIn Cookie...');
     const cookie: Cookie = {
       name: 'li_at',
       value: process.env.LINKEDIN_COOKIE || '',
@@ -61,12 +61,12 @@ export class ChromiumBrowser {
 
     await context.addCookies([cookie]);
 
-    this.logger.info('🌐 Browser ready to use!');
+    this.logger.success('Browser ready to use!');
     this.browser = context;
   }
 
   public async close(): Promise<void> {
-    this.logger.info('🌐 Closing browser...');
+    this.logger.warn('Closing browser...');
     await this.browser.close();
   }
 

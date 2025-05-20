@@ -1,11 +1,10 @@
 import { franc } from 'franc';
-import { Language } from '../interfaces/language.interface';
+import { LangDetector } from '@interfaces/lang-detector.interface';
 
-export class FrancPlugin implements Language {
+export class FrancPlugin implements LangDetector {
 
   detect(text: string): string {
-    const language = franc(text); // TODO (dpardo): translate eng to english and spa to spanish ...
-    if (language === 'und') return '';
+    const language = franc(text);
     return language;
   }
 

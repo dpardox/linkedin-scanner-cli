@@ -23,7 +23,7 @@ describe('FrancPlugin', () => {
   test('should return empty string for empty text', () => {
     const text = '';
     const result = franc.detect(text);
-    expect(result).toBe('');
+    expect(result).toBe('und');
   });
 
 });

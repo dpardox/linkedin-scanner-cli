@@ -16,14 +16,14 @@ export class LoginPage {
 
 
   public async open(): Promise<void> {
-    this.logger.info('🔐 Opening login page...');
+    this.logger.info('Opening login page...');
     await this.page.goto(LoginPage.url, { waitUntil: 'domcontentloaded' });
     await this.page.waitForTimeout(randms());
   }
 
   public isAuthenticated(): boolean {
     if (this.page.url().startsWith(FeedPage.url)) {
-      this.logger.info('🔐 Session detected.');
+      this.logger.success('Session detected.');
       return true;
     }
 

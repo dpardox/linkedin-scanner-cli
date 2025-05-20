@@ -2,7 +2,7 @@ import { Storage } from '@interfaces/storage.interface';
 import fs from 'fs';
 import path from 'path';
 
-export class StoragePlugin<T extends { id: ID }, ID = string> implements Storage<T, ID> {
+export class JSONStoragePlugin<T extends { id: ID }, ID = string> implements Storage<T, ID> {
 
   private dir = path.resolve(process.cwd(), 'db');
   private entity: string;
@@ -46,7 +46,7 @@ export class StoragePlugin<T extends { id: ID }, ID = string> implements Storage
 
     if (record) {
       Object.keys(record).forEach((key) => {
-        if (key === 'date' && typeof record[key] === 'string') {
+        if (['date', 'createdAt'].includes(key) && typeof record[key] === 'string') {
           record[key] = new Date(record[key]);
         }
       });
@@ -77,9 +77,9 @@ export class StoragePlugin<T extends { id: ID }, ID = string> implements Storage
     return this.findById(id) as T;
   }
 
-  public upsert(id: ID, data: Partial<T>): T | null {
+  public upsert(id: ID, data: Partial<T>): T {
     if (this.exists(id)) {
-      return this.update(id, data);
+      return this.update(id, data)!;
     } else {
       return this.create({ ...data, id } as T);
     }

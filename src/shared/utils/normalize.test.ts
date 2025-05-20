@@ -6,13 +6,17 @@ describe('normalize', () => {
   test('should return the normalized text', () => {
     const text = `
       Hello,  WORLD!
-      áéíóú
-      .NET
+      áéíóú | sólidos en C#
+      .NET co-construir
+      • Lorem; ::ipsum
+      • Full-Stack (100%) remoto.,
       (U.S. Based)
+      🚀
     `;
     const normalizedText = normalize(text);
-    expect(normalizedText).toBe('hello world aeiou .net u.s. based');
+    expect(normalizedText).toBe('hello world aeiou solidos en c# .net co-construir lorem ipsum full-stack 100% remoto. u.s. based');
   });
+
 });
 
 describe('normalizeBatch', () => {

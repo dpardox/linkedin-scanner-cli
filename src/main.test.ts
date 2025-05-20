@@ -32,21 +32,4 @@ describe('Main', () => {
     expect(runMock).toHaveBeenCalled();
   });
 
-  test('should catch and log errors', async () => {
-    const fakeError = new Error('Fake error');
-
-    vi.doMock('@apps/job-checker.app', () => ({
-      JobCheckerApp: vi.fn().mockImplementation(() => ({
-        run: vi.fn().mockRejectedValue(fakeError)
-      }))
-    }));
-
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    await import('./main');
-
-    expect(spy).toHaveBeenCalled();
-    expect(spy).toHaveBeenCalledWith('App initialization failed:', fakeError);
-  });
-
 });

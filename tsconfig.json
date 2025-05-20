@@ -31,15 +31,18 @@
     // "moduleResolution": "node10",                     /* Specify how TypeScript looks up a file from a given module specifier. */
     "baseUrl": "./",                                  /* Specify the base directory to resolve non-relative module names. */
     "paths": {
-      "@apps/*":        [ "src/apps/*" ],
-      "@config/*":      [ "src/config/*" ],
-      "@keywords/*":    [ "src/config/keywords/*" ],
-      "@core/*":        [ "src/core/*" ],
-      "@interfaces/*":  [ "src/interfaces/*" ],
-      "@plugins/*":     [ "src/plugins/*" ],
-      "@shared/*":      [ "src/shared/*" ],
-      "@enums/*":       [ "src/shared/enums/*" ],
-      "@utils/*":       [ "src/shared/utils/*" ],
+      "@apps/*":            [ "src/apps/*" ],
+      "@keywords/*":        [ "src/config/keywords/*" ],
+      "@config/*":          [ "src/config/*" ],
+      "@models/*":          [ "src/core/models/*" ],
+      "@repository/*":      [ "src/core/repository/*" ],
+      "@core/*":            [ "src/core/*" ],
+      "@infrastructure/*":  [ "src/infrastructure/*" ],
+      "@interfaces/*":      [ "src/interfaces/*" ],
+      "@plugins/*":         [ "src/plugins/*" ],
+      "@enums/*":           [ "src/shared/enums/*" ],
+      "@utils/*":           [ "src/shared/utils/*" ],
+      "@shared/*":          [ "src/shared/*" ],
     },
     // "rootDirs": [],                                   /* Allow multiple folders to be treated as one when resolving modules. */
     // "typeRoots": [],                                  /* Specify multiple folders that act like './node_modules/@types'. */

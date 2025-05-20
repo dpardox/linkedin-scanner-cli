@@ -1,13 +1,12 @@
-import { type Page, type ElementHandle } from 'playwright';
+import { type Page } from 'playwright';
 import { Location } from '@enums/location.enum';
 import { Filters } from '@shared/types/filters.type';
 import { randms } from '@utils/randms.util';
-import { extractEmails } from '@utils/extract-emails.util';
-import { JobsViewPage } from './jobs-view.page';
 import { SortBy } from '@shared/enums/sort-by.enum';
 import { BasePage } from './_base.page';
 import { Logger } from '@interfaces/logger.interface';
 import { normalize } from '@utils/normalize.util';
+import { JobModel } from '@models/job.model';
 
 
 export class JobsSearchPage extends BasePage {
@@ -24,7 +23,7 @@ export class JobsSearchPage extends BasePage {
 
 
   public async open(query: string, location: Location, filters: Filters): Promise<void> {
-    this.logger.info('🔍 Opening jobs search page...');
+    this.logger.info('Opening jobs search page...');
 
     const { timePostedRange, workType ,easyApply } = filters;
 
@@ -53,22 +52,22 @@ export class JobsSearchPage extends BasePage {
       const visible = await locator.isVisible();
 
       if (visible) {
-        this.logger.warn('👀 No matching jobs found.');
+        this.logger.error('No matching jobs found.');
         return true;
       }
 
       return false;
     } catch (error) {
-      this.logger.error('⚠️ Error checking for no jobs found: %s', error);
+      this.logger.error('Error checking for no jobs found: %s', error);
       await this.page.pause();
       process.exit(1);
 
     }
   }
 
-  public async getJobs(): Promise<string[]> {
+  public async getJobIds(): Promise<string[]> {
     try {
-      this.logger.info('🔍 Retrieving job listings...');
+      this.logger.info('Retrieving job listings...');
 
       const layout = '.scaffold-layout__list';
       const scroll = `${layout} > div`;
@@ -109,17 +108,17 @@ export class JobsSearchPage extends BasePage {
         }
       }, scroll);
 
-      this.logger.info(`📋 Found %s job(s).`, ids.length);
+      this.logger.info(`Found %s job(s).`, ids.length);
       return ids;
     } catch (error) {
-      this.logger.error('⚠️ Error getting jobs: %s', error);
+      this.logger.error('Error getting jobs: %s', error);
       await this.page.pause();
       return [];
     }
   }
 
   public async nextPage(): Promise<boolean> {
-    this.logger.info('🔍 Retrieving pagination...');
+    this.logger.info('Retrieving pagination...');
 
     const selector = '.artdeco-pagination__indicator--number.active';
 
@@ -133,7 +132,7 @@ export class JobsSearchPage extends BasePage {
     let currentPage = await el.evaluate((el: HTMLElement) => el.getAttribute('data-test-pagination-page-btn'));
 
     if (!currentPage) {
-      this.logger.error('⚠️ No pagination found.');
+      this.logger.error('No pagination found.');
       return false;
     }
 
@@ -144,14 +143,14 @@ export class JobsSearchPage extends BasePage {
       return false;
     }
 
-    this.logger.info('🔍 Going to page %s...', +currentPage + 1);
+    this.logger.info('Going to page %s...', +currentPage + 1);
     this.click(nextPage);
     return true;
   }
 
   private async getJobTitle(job: string): Promise<string | null> {
     try {
-      const selector = `.job-card-container[data-job-id="${job}"] .visually-hidden`;
+      const selector = `.job-card-container[data-job-id="${job}"] .visually-hidden`; // TODO (dpardo): remove "withh verification"
       return await this.page.$eval(selector, (el) => el.textContent);
       // if (card) {
       //   let el = await job.$('.artdeco-entity-lockup__title strong');
@@ -162,7 +161,7 @@ export class JobsSearchPage extends BasePage {
       // await this.page.waitForSelector('.job-details-jobs-unified-top-card__job-title');
       // return (await this.page.$eval('.job-details-jobs-unified-top-card__job-title', (el: HTMLElement) => el.innerText.trim()));
     } catch (error) {
-      this.logger.error('⚠️ Error getting job title: %s', error);
+      this.logger.error('Error getting job title: %s', error);
       await this.page.pause();
       process.exit(1);
     }
@@ -175,14 +174,14 @@ export class JobsSearchPage extends BasePage {
 
       if (dismissed) {
         dismissed.scrollIntoViewIfNeeded();
-        this.logger.warn(`🚫 Already dissmissed job "%s"`, await this.getJobTitle(job));
+        this.logger.warn(`Already dissmissed job "%s"`, await this.getJobTitle(job));
         await this.setBackgroundColor(job, 'rgba(140, 140, 140, .2)');
         return true;
       }
 
       return false;
     } catch (error) {
-      this.logger.error('⚠️ Error checking for dismissed job: %s', error);
+      this.logger.error('Error checking for dismissed job: %s', error);
       await this.page.pause();
       process.exit(1);
     }
@@ -200,14 +199,14 @@ export class JobsSearchPage extends BasePage {
       const applied = normalize(text);
 
       if (applied?.includes('applied')) {
-        this.logger.warn(`🚀 You already applied to job "%s".`, await this.getJobTitle(job));
+        this.logger.warn(`You already applied to job "%s".`, await this.getJobTitle(job));
         await this.dissmissJob(job);
         return true;
       };
 
       return false;
     } catch (error) {
-      this.logger.error('⚠️ Error checking for applied job: %s', error);
+      this.logger.error('Error checking for applied job: %s', error);
       await this.page.pause();
       process.exit(1);
     }
@@ -227,7 +226,7 @@ export class JobsSearchPage extends BasePage {
 
       return false;
     } catch (error) {
-      this.logger.error('⚠️ Error checking for empty job: %s', error);
+      this.logger.error('Error checking for empty job: %s', error);
       await this.page.pause();
       process.exit(1);
     }
@@ -240,7 +239,7 @@ export class JobsSearchPage extends BasePage {
       const el = await this.page.$(selector);
       return !!el;
     } catch (error) {
-      this.logger.error('⚠️ Error checking for already selected job: %s', error);
+      this.logger.error('Error checking for already selected job: %s', error);
       await this.page.pause();
       process.exit(1);
     }
@@ -248,12 +247,12 @@ export class JobsSearchPage extends BasePage {
 
   public async selectJob(job: string): Promise<void> {
     try {
-      this.logger.info('🔍 Selecting job "%s"...', job);
+      this.logger.info('Selecting job "%s"...', job);
 
       await this.page.waitForTimeout(randms());
 
       if (await this.alreadySelected(job, false)) {
-        this.logger.warn('⚠️ Already selected job "%s".', job);
+        this.logger.info('Already selected job "%s".', job);
         return;
       }
 
@@ -262,7 +261,7 @@ export class JobsSearchPage extends BasePage {
       const item = await this.page.$(selector);
 
       if (!item) {
-        this.logger.error('⚠️ Job card not found.');
+        this.logger.error('Job card not found.');
         return;
       }
 
@@ -278,58 +277,46 @@ export class JobsSearchPage extends BasePage {
       await item.click({ force: true });
       await this.page.waitForTimeout(randms());
 
-      this.logger.info(`📋 Selected job "%s"`, await this.getJobTitle(job));
+      this.logger.info(`Selected job "%s"`, await this.getJobTitle(job));
       await this.setBackgroundColor(job, 'lightyellow');
 
       await this.alreadySelected(job);
     } catch (error) {
-      this.logger.error('⚠️ Error selecting job: %s', error);
+      this.logger.error('Error selecting job: %s', error);
       await this.page.pause();
       process.exit(1);
     }
   }
 
-  public async getJobDetails(job: string) { // TODO (dpardo): return only raw data
+  public async getJobDetails(jobId: string): Promise<JobModel> {
     try {
-      this.logger.info('🔍 Retrieving job details...');
+      this.logger.info('Retrieving job details...');
 
       await this.page.waitForTimeout(randms());
 
       const selector = {
         title: '.job-details-jobs-unified-top-card__job-title',
-        country: '.job-details-jobs-unified-top-card__tertiary-description-container .tvm__text',
-        content: '.jobs-description__container .jobs-box__html-content div',
+        location: '.job-details-jobs-unified-top-card__tertiary-description-container .tvm__text',
+        description: '.jobs-description__container .jobs-box__html-content div',
       };
 
       await this.page.waitForSelector(selector.title);
-      await this.page.waitForSelector(selector.country, { state: 'attached' });
-      await this.page.waitForSelector(selector.content);
+      await this.page.waitForSelector(selector.location, { state: 'attached' });
+      await this.page.waitForSelector(selector.description);
 
       await this.page.waitForTimeout(randms());
 
-      const link = `${JobsViewPage.url}/${job}/`;
+      const jobModel = new JobModel();
+      jobModel.id = jobId;
+      jobModel.title = await this.innerText(selector.title);
+      jobModel.location = await this.innerText(selector.location);
+      jobModel.description = await this.innerText(selector.description);
+      jobModel.highSkillsMatch = await this.page.getByText('High skills match', { exact: true }).isVisible().catch(() => false);
+      jobModel.isClosed = await this.page.getByText('No longer accepting applications', { exact: true }).isVisible().catch(() => false);
 
-      const raw = {
-        title: await this.innerText(selector.title),
-        country: await this.innerText(selector.country),
-        content: await this.innerText(selector.content),
-      };
-
-      const title = normalize(raw.title ?? '');
-      const country = normalize(raw.country ?? '');
-      const content = normalize(raw.content ?? '');
-
-      const description = `${title} ${content}`;
-
-      const emails = extractEmails(description);
-
-      const highSkillsMatch = await this.page.getByText('High skills match', { exact: true }).isVisible().catch(() => false);
-
-      const isClosed = await this.page.getByText('No longer accepting applications', { exact: true }).isVisible().catch(() => false);
-
-      return { id: job, link, title, country, content, description, emails, highSkillsMatch, isClosed, raw };
+      return jobModel;
     } catch (error) {
-      this.logger.error('⚠️ Error getting job details: %s', error);
+      this.logger.error('Error getting job details: %s', error);
       await this.page.pause();
       process.exit(1);
     }
@@ -338,13 +325,13 @@ export class JobsSearchPage extends BasePage {
   public async dissmissJob(job: string): Promise<void> {
     try {
       await this.page.waitForTimeout(randms());
-      this.logger.warn(`🚫 Dismissing job "%s"...`, await this.getJobTitle(job));
+      this.logger.warn(`Dismissing job "%s"...`, await this.getJobTitle(job));
       const selector = `.job-card-container[data-job-id="${job}"] .job-card-container__action`;
       await this.page.waitForSelector(selector);
       const button = await this.page.$(selector);
 
       if (!button) {
-        this.logger.error('⚠️ Dismiss button not found.');
+        this.logger.error('Dismiss button not found.');
         return;
       }
 
@@ -353,7 +340,7 @@ export class JobsSearchPage extends BasePage {
       await button.click();
       await this.setBackgroundColor(job, 'rgba(140, 140, 140, .2)');
     } catch (error) {
-      this.logger.error('⚠️ Error dismissing job: %s', error);
+      this.logger.error('Error dismissing job: %s', error);
       await this.page.pause();
       process.exit(1);
     }
@@ -367,7 +354,7 @@ export class JobsSearchPage extends BasePage {
       const selector = `.job-card-container[data-job-id="${job}"].job-card-list--is-dismissed`;
       await this.page.waitForSelector(selector, { timeout: 0 });
       await this.setBackgroundColor(job, 'rgba(140, 140, 140, .2)');
-      this.logger.info(`▶︎ "%s" dismissed!`, title);
+      this.logger.success(`Job "%s" dismissed!`, title);
     } catch (error) {
       this.logger.error('Error waiting for job to be dismissed: %s', error);
       await this.page.pause();

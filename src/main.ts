@@ -5,11 +5,10 @@ import { JobCheckerApp } from '@apps/job-checker.app';
 const notifier = new SoundNotificationAdapter();
 const logger = new WinstonPlugin();
 
-const jobChecker = new JobCheckerApp(notifier, logger);
-
-jobChecker.run().catch((error) => {
-  console.error('App initialization failed:', error);
-});
+(async () => {
+  const jobChecker = new JobCheckerApp(notifier, logger);
+  await jobChecker.run();
+})();
 
 // TODO (dpardo): DB for job id and check if already scanned
 // TODO (dpardo): Remove commented code
