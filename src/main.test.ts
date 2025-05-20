@@ -8,10 +8,6 @@ vi.mock('@plugins/sound-notification.plugin', () => ({
   SoundNotificationAdapter: vi.fn()
 }));
 
-vi.mock('@plugins/text.plugin', () => ({
-  TextPlugin: vi.fn()
-}));
-
 describe('Main', () => {
 
   beforeEach(() => {

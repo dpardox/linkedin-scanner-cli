@@ -1,6 +1,6 @@
 import { Page } from 'playwright';
 import { FeedPage } from './feed.page';
-import { randms } from '../utils/randms.util';
+import { randms } from '@utils/randms.util';
 import { Logger } from '@interfaces/logger.interface';
 import 'dotenv/config';
 

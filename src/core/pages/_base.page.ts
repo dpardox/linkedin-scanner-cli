@@ -1,6 +1,6 @@
 import { ElementHandle, Page } from 'playwright';
 
-import { randms } from '../utils/randms.util';
+import { randms } from '@utils/randms.util';
 
 
 

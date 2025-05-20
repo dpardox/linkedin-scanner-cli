@@ -1,13 +1,13 @@
 import { type Page, type ElementHandle } from 'playwright';
-import { Location } from '@shared/enums/location.enum';
+import { Location } from '@enums/location.enum';
 import { Filters } from '@shared/types/filters.type';
-import { randms } from '../utils/randms.util';
-import { extractEmails } from '../utils/text.util';
+import { randms } from '@utils/randms.util';
+import { extractEmails } from '@utils/extract-emails.util';
 import { JobsViewPage } from './jobs-view.page';
 import { SortBy } from '@shared/enums/sort-by.enum';
 import { BasePage } from './_base.page';
 import { Logger } from '@interfaces/logger.interface';
-import { Text } from '@interfaces/text.interface';
+import { normalize } from '@utils/normalize.util';
 
 
 export class JobsSearchPage extends BasePage {
@@ -18,7 +18,6 @@ export class JobsSearchPage extends BasePage {
   constructor(
     page: Page,
     private readonly logger: Logger,
-    private readonly text: Text,
   ) {
     super(page);
   }
@@ -198,7 +197,7 @@ export class JobsSearchPage extends BasePage {
       if (!el) return false;
 
       const text = await el.evaluate(el => el.textContent ?? '');
-      const applied = this.text.normalize(text);
+      const applied = normalize(text);
 
       if (applied?.includes('applied')) {
         this.logger.warn(`🚀 You already applied to job "%s".`, await this.getJobTitle(job));
@@ -219,7 +218,7 @@ export class JobsSearchPage extends BasePage {
       await this.page.waitForTimeout(randms());
       const selector = `.scaffold-layout__list-item[data-occludable-job-id="${job}"]`;
       let text = await this.page.$eval(selector, (el) => el.textContent);
-      text &&= this.text.normalize(text);
+      text &&= normalize(text);
 
       if (!text) {
         this.logger.error('Empty job listing found.');
@@ -290,7 +289,7 @@ export class JobsSearchPage extends BasePage {
     }
   }
 
-  public async getJobDetails(job: string) {
+  public async getJobDetails(job: string) { // TODO (dpardo): return only raw data
     try {
       this.logger.info('🔍 Retrieving job details...');
 
@@ -316,9 +315,9 @@ export class JobsSearchPage extends BasePage {
         content: await this.innerText(selector.content),
       };
 
-      const title = this.text.normalize(raw.title ?? '');
-      const country = this.text.normalize(raw.country ?? '');
-      const content = this.text.normalize(raw.content ?? '');
+      const title = normalize(raw.title ?? '');
+      const country = normalize(raw.country ?? '');
+      const content = normalize(raw.content ?? '');
 
       const description = `${title} ${content}`;
 

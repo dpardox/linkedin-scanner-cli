@@ -1,13 +1,11 @@
 import { WinstonPlugin } from '@plugins/winston.plugin';
 import { SoundNotificationAdapter } from '@plugins/sound-notification.plugin';
 import { JobCheckerApp } from '@apps/job-checker.app';
-import { TextPlugin } from '@plugins/text.plugin';
 
 const notifier = new SoundNotificationAdapter();
 const logger = new WinstonPlugin();
-const textPlugin = new TextPlugin();
 
-const jobChecker = new JobCheckerApp(notifier, logger, textPlugin);
+const jobChecker = new JobCheckerApp(notifier, logger);
 
 jobChecker.run().catch((error) => {
   console.error('App initialization failed:', error);
