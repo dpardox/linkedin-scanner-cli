@@ -10,10 +10,4 @@ const logger = new WinstonPlugin();
   await jobChecker.run();
 })();
 
-// TODO (dpardo): DB for job id and check if already scanned
-// TODO (dpardo): Remove commented code
 // TODO (dpardo): loop awaiting 5 minutes
-// TODO (dpardo): move debuug to a winston logger
-// TODO (dpardo): plugin to franc
-
-// TODO (dpardo): mount this project in a docker container

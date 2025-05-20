@@ -118,6 +118,7 @@ export class JobsSearchPage extends BasePage {
   }
 
   public async nextPage(): Promise<boolean> {
+    this.logger.br();
     this.logger.info('Retrieving pagination...');
 
     const selector = '.artdeco-pagination__indicator--number.active';

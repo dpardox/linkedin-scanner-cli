@@ -9,10 +9,11 @@ import { Notifier } from '@interfaces/notifier.interface';
 import { Logger } from '@interfaces/logger.interface';
 import { JobStatus } from '@enums/job-status.enum';
 import { FrancPlugin } from '@plugins/franc.plugin';
-import { normalize, normalizeBatch } from '@utils/normalize.util';
+import { normalize } from '@utils/normalize.util';
 import { JobSearchConfig } from '@shared/types/job-search-config.type';
 import { JobModel } from '@models/job.model';
 import { JobDatasource } from '@infrastructure/datasource/job.datasource';
+import { sleep } from '@utils/sleep.util';
 
 export class JobCheckerApp {
 
@@ -34,6 +35,13 @@ export class JobCheckerApp {
       this.logger.error('Error: %s', error);
       await this.chromium.close();
       process.exit(1);
+    } finally {
+      await this.chromium.close();
+      const minutes = 5;
+      this.logger.br();
+      this.logger.warn('Waiting %d minutes before next run...', minutes);
+      await sleep(minutes * 60 * 1000);
+      this.logger.br();
     }
   }
 
@@ -44,9 +52,8 @@ export class JobCheckerApp {
 
     if (!await this.signIn()) return;
 
-    this.logger.br();
-
     for (const config of jobSearchConfigs) {
+      this.logger.br();
       await this.processConfig(config);
     }
 
@@ -96,8 +103,6 @@ export class JobCheckerApp {
         await this.markForManualCheck(jobModel);
       }
     } while (await this.jobsSearchPage.nextPage());
-
-    this.logger.br();
   }
 
   private async noJobsFound(): Promise<boolean> {
