@@ -1,12 +1,12 @@
 import { createLogger, Logger, format, transports } from 'winston';
-import { Logger as LoggerInterface } from '@interfaces/logger.interface';
+import { LoggerPort } from '@ports/logger.port';
 import { addColors } from 'winston/lib/winston/config';
 
-export class WinstonPlugin implements LoggerInterface {
+export class WinstonAdapter implements LoggerPort {
 
-  private logger: Logger;
+  private readonly logger: Logger;
 
-  private customLevels = {
+  private readonly customLevels = {
     levels: {
       error: 0,
       success: 1,

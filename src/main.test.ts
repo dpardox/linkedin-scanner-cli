@@ -1,11 +1,15 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-vi.mock('@plugins/winston.plugin', () => ({
-  WinstonPlugin: vi.fn()
+vi.mock('@adapters/winston.adapter', () => ({
+  WinstonAdapter: vi.fn()
 }));
 
-vi.mock('@plugins/sound-notification.plugin', () => ({
+vi.mock('@adapters/sound-notification.adapter', () => ({
   SoundNotificationAdapter: vi.fn()
+}));
+
+vi.mock('@adapters/chromium.adapter', () => ({
+  ChromiumAdapter: vi.fn()
 }));
 
 describe('Main', () => {

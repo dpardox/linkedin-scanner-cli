@@ -1,5 +1,5 @@
 import { type Page } from 'playwright';
-import { Logger } from '@interfaces/logger.interface';
+import { LoggerPort } from '@ports/logger.port';
 
 
 export class SearchResultsContentPage {
@@ -7,8 +7,8 @@ export class SearchResultsContentPage {
   static readonly url: string = 'https://www.linkedin.com/search/results/content';
 
   constructor(
-    private page: Page,
-    private readonly logger: Logger,
+    private readonly page: Page,
+    private readonly logger: LoggerPort,
   ) { }
 
   public async open(): Promise<void> {
@@ -25,10 +25,10 @@ export class SearchResultsContentPage {
 
     await this.page.goto(url.href, { waitUntil: 'domcontentloaded' }); // TODO (dpardo): move to browser plugin
 
-    this.logger.info('⏸ Waiting check posts...');
+    this.logger.info('Waiting check posts...');
     await new Promise<void>((resolve) => {
       this.page.once('close', () => {
-        this.logger.info('🧾 Page manually closed.');
+        this.logger.info('Page manually closed.');
         resolve();
       });
     });

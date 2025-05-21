@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, test } from 'vitest';
-import { FrancPlugin } from './franc.plugin';
+import { FrancAdapter } from './franc.adapter';
 
-describe('FrancPlugin', () => {
-  let franc: FrancPlugin;
+describe('FrancAdapter', () => {
+  let franc: FrancAdapter;
 
   beforeEach(() => {
-    franc = new FrancPlugin();
+    franc = new FrancAdapter();
   });
 
   test('should detect "eng" language', () => {

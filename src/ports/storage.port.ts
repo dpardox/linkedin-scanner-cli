@@ -1,4 +1,4 @@
-export interface Storage<T = unknown, ID = string> {
+export interface StoragePort<T = unknown, ID = string> {
   exists: (id: ID) => boolean;
   findById: (id: ID) => T | null;
   create(data: T) : T;

@@ -1,7 +1,7 @@
 import { exec } from 'child_process';
-import { Notifier } from '@interfaces/notifier.interface';
+import { NotifierPort } from '@ports/notifier.port';
 
-export class SoundNotificationAdapter implements Notifier {
+export class SoundNotificationAdapter implements NotifierPort {
 
   public notify(): void {
     exec('afplay /System/Library/Sounds/Glass.aiff');

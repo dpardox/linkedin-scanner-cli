@@ -33,7 +33,7 @@ Run `npm i` to install the dependencies.
 
 ## How to run
 
-Run `npm start` to lunch the scraper.
+Run `npm start` to launch the scraper.
 
 ---
 

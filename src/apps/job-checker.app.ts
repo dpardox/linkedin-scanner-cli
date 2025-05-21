@@ -1,52 +1,55 @@
 import { jobSearchConfigs } from '@config/main.config';
 import { JobsSearchPage } from '@core/pages/jobs-search.page';
-import { ChromiumBrowser } from '@core/browsers/chromium.browser';
 import { LoginPage } from '@core/pages/login.page';
 import { matchWholeWord } from '@utils/match-whole-word.util';
 import { SearchResultsContentPage } from '@core/pages/searchResultsContent.page';
 import { JobAnalyzerAI } from '@core/ai/job-analyzer.ai';
-import { Notifier } from '@interfaces/notifier.interface';
-import { Logger } from '@interfaces/logger.interface';
+import { NotifierPort } from '@ports/notifier.port';
+import { LoggerPort } from '@ports/logger.port';
 import { JobStatus } from '@enums/job-status.enum';
-import { FrancPlugin } from '@plugins/franc.plugin';
+import { FrancAdapter } from '@adapters/franc.adapter';
 import { normalize } from '@utils/normalize.util';
 import { JobSearchConfig } from '@shared/types/job-search-config.type';
 import { JobModel } from '@models/job.model';
 import { JobDatasource } from '@infrastructure/datasource/job.datasource';
 import { sleep } from '@utils/sleep.util';
+import { BrowserPort } from '@ports/browser.port';
 
 export class JobCheckerApp {
 
-  private readonly chromium = new ChromiumBrowser(this.logger);
-  private readonly langDetector = new FrancPlugin();
-  private readonly jobDatasource = new JobDatasource();
+  private readonly langDetector = new FrancAdapter(); // TODO (dpardo): move to constructor
+  private readonly jobDatasource = new JobDatasource(); // TODO (dpardo): move to constructor
 
   private jobsSearchPage!: JobsSearchPage;
 
   constructor (
-    private readonly notifier: Notifier,
-    private readonly logger: Logger,
+    private readonly logger: LoggerPort,
+    private readonly notifier: NotifierPort,
+    private readonly browser: BrowserPort,
   ) { }
 
   public async run(): Promise<void> {
     try {
-      await this.lunch();
+      await this.launch();
     } catch (error) {
-      this.logger.error('Error: %s', error);
-      await this.chromium.close();
+      this.logger.error('%s', error);
+      console.error({ error });
+      await this.browser.close();
       process.exit(1);
     } finally {
-      await this.chromium.close();
+      await this.browser.close();
       const minutes = 5;
       this.logger.br();
       this.logger.warn('Waiting %d minutes before next run...', minutes);
       await sleep(minutes * 60 * 1000);
       this.logger.br();
+      await this.run();
+      // TODO (dpardo): in the second run, set presume fitness to true
     }
   }
 
-  public async lunch(): Promise<void> {
-    await this.chromium.lunch();
+  public async launch(): Promise<void> {
+    await this.browser.launch({ headless: false });
 
     this.logger.br();
 
@@ -57,21 +60,20 @@ export class JobCheckerApp {
       await this.processConfig(config);
     }
 
-    const searchResultsContentPage = new SearchResultsContentPage(await this.chromium.firstPage(), this.logger);
+    const searchResultsContentPage = new SearchResultsContentPage(await this.browser.firstPage(), this.logger);
     this.notifier.notify();
     await searchResultsContentPage.open();
 
-    await this.chromium.close();
-    process.exit(0);
+    await this.browser.close();
   }
 
   private async signIn(): Promise<boolean> {
-    const loginPage = new LoginPage(await this.chromium.firstPage(), this.logger);
+    const loginPage = new LoginPage(await this.browser.firstPage(), this.logger);
     await loginPage.open();
 
     if (!loginPage.isAuthenticated()) {
       this.logger.error('🔐 Session not detected. Please login to LinkedIn.');
-      await this.chromium.close();
+      await this.browser.close();
       return false;
     }
 
@@ -82,7 +84,7 @@ export class JobCheckerApp {
     const { query, location, filters } = config;
 
     // TODO (dpardo): plugin to chromium and here use the port
-    this.jobsSearchPage = new JobsSearchPage(await this.chromium.firstPage(), this.logger);
+    this.jobsSearchPage = new JobsSearchPage(await this.browser.firstPage(), this.logger);
     await this.jobsSearchPage.open(query, location, filters);
 
     do {
@@ -92,17 +94,21 @@ export class JobCheckerApp {
 
       for (const jobId of jobIds) {
         this.logger.br();
-
-        const jobModel = await this.getJobDetails(jobId);
-
-        if (await this.isDissmissedJob(jobId)) continue;
-        if (await this.isAppliedJob(jobId)) continue;
-        if (!await this.hasValidLanguage(jobModel)) continue;
-        if (!await this.getJobFitness(jobModel, config)) continue;
-        await this.showPotentialMatch(jobModel);
-        await this.markForManualCheck(jobModel);
+        await this.checkJob(jobId, config);
       }
     } while (await this.jobsSearchPage.nextPage());
+  }
+
+  private async checkJob(jobId: string, config: JobSearchConfig): Promise<void> {
+    const jobModel = await this.getJobDetails(jobId);
+
+    if (await this.isDissmissedJob(jobId)) return;
+    if (await this.isAppliedJob(jobId)) return;
+    if (!await this.hasValidLanguage(jobModel)) return;
+    if (!await this.getJobFitness(jobModel, config)) return;
+
+    this.showPotentialMatch(jobModel);
+    await this.markForManualCheck(jobModel);
   }
 
   private async noJobsFound(): Promise<boolean> {
@@ -181,6 +187,7 @@ export class JobCheckerApp {
     await this.IACheck(job);
 
     this.logger.error('Job "%s" no matching criteria were met!', job.id);
+    // TODO (dpardo): mark job as indeterminate
     return false;
   }
 
@@ -254,7 +261,7 @@ export class JobCheckerApp {
     this.jobDatasource.update(job.id, { status: JobStatus.dissmissed });
   }
 
-  private async showPotentialMatch(job: JobModel): Promise<void> {
+  private showPotentialMatch(job: JobModel): void {
     this.logger.info('Potential match found!');
     const { id, title, link, location, emails } = job;
 
@@ -276,3 +283,8 @@ export class JobCheckerApp {
   }
 
 }
+
+
+// TODO (dpardo): doesn't dissmiss the job use the database to check if the job was already processed
+// TODO (dpardo): clean the database after one week
+// TODO (dpardo): on error re-run n times (.env)

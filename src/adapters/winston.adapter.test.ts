@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { WinstonPlugin } from './winston.plugin';
+import { WinstonAdapter } from './winston.adapter';
 
 const mockLog = vi.fn();
 const mockInfo = vi.fn();
@@ -27,31 +27,31 @@ vi.mock('winston', () => ({
   },
 }));
 
-describe('WinstonPlugin', () => {
-  let winstonPlugin: WinstonPlugin;
+describe('WinstonAdapter', () => {
+  let winstonAdapter: WinstonAdapter;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    winstonPlugin = new WinstonPlugin();
+    winstonAdapter = new WinstonAdapter();
   });
 
   test('should call logger.info on info()', () => {
-    winstonPlugin.info('Test info');
+    winstonAdapter.info('Test info');
     expect(mockInfo).toHaveBeenCalledWith('Test info');
   });
 
   test('should call logger.error on error()', () => {
-    winstonPlugin.error('Test error');
+    winstonAdapter.error('Test error');
     expect(mockError).toHaveBeenCalledWith('Test error');
   });
 
   test('should call logger.warn on warn()', () => {
-    winstonPlugin.warn('Test warn');
+    winstonAdapter.warn('Test warn');
     expect(mockWarn).toHaveBeenCalledWith('Test warn');
   });
 
   test('should call logger.log on success()', () => {
-    winstonPlugin.success('Test success');
+    winstonAdapter.success('Test success');
     expect(mockLog).toHaveBeenCalledWith('success', 'Test success');
   });
 });

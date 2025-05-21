@@ -1,7 +1,7 @@
 import { Page } from 'playwright';
 import { FeedPage } from './feed.page';
 import { randms } from '@utils/randms.util';
-import { Logger } from '@interfaces/logger.interface';
+import { LoggerPort } from '@ports/logger.port';
 import 'dotenv/config';
 
 
@@ -10,8 +10,8 @@ export class LoginPage {
   static readonly url: string = 'https://www.linkedin.com/login';
 
   constructor(
-    private page: Page,
-    private logger: Logger,
+    private readonly page: Page,
+    private readonly logger: LoggerPort,
   ) { }
 
 

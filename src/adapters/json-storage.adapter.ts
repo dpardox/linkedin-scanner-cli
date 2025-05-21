@@ -1,11 +1,11 @@
-import { Storage } from '@interfaces/storage.interface';
+import { StoragePort } from '@ports/storage.port';
 import fs from 'fs';
 import path from 'path';
 
-export class JSONStoragePlugin<T extends { id: ID }, ID = string> implements Storage<T, ID> {
+export class JSONStorageAdapter<T extends { id: ID }, ID = string> implements StoragePort<T, ID> {
 
-  private dir = path.resolve(process.cwd(), 'db');
-  private entity: string;
+  private readonly dir = path.resolve(process.cwd(), 'db');
+  private readonly entity: string;
 
   constructor(entity: string) {
     this.entity = entity;
@@ -52,7 +52,7 @@ export class JSONStoragePlugin<T extends { id: ID }, ID = string> implements Sto
       });
     }
 
-    return record || null;
+    return record ?? null;
   }
 
   public create(data: T): T {

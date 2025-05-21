@@ -3,7 +3,7 @@ import { OpenAI } from 'openai';
 import { readFile } from 'fs/promises';
 import { resolve } from 'path';
 import clipboard from 'clipboardy';
-import { Logger} from '@interfaces/logger.interface';
+import { LoggerPort } from '@ports/logger.port';
 
 
 export class JobAnalyzerAI {
@@ -11,7 +11,7 @@ export class JobAnalyzerAI {
   // private openai: OpenAI;
 
   constructor(
-    private readonly logger: Logger,
+    private readonly logger: LoggerPort,
   ) {
     this.init();
   }

@@ -1,6 +1,6 @@
 import { JobsViewPage } from '@core/pages/jobs-view.page';
 import { JobStatus } from '@enums/job-status.enum';
-import { LangDetector } from '@interfaces/lang-detector.interface';
+import { LangDetectorPort } from '@ports/lang-detector.port';
 import { Job } from '@shared/types/job.type';
 import { extractEmails } from '@utils/extract-emails.util';
 import { normalize } from '@utils/normalize.util';
@@ -39,7 +39,7 @@ export class JobModel implements Job {
     return `${this.title} ${this.description}`;
   }
 
-  public language(detector: LangDetector): string {
+  public language(detector: LangDetectorPort): string {
     return detector.detect(normalize(this.description.slice(0, 500)));
   }
 

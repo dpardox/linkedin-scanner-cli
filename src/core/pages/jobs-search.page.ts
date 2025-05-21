@@ -4,19 +4,19 @@ import { Filters } from '@shared/types/filters.type';
 import { randms } from '@utils/randms.util';
 import { SortBy } from '@shared/enums/sort-by.enum';
 import { BasePage } from './_base.page';
-import { Logger } from '@interfaces/logger.interface';
+import { LoggerPort } from '@ports/logger.port';
 import { normalize } from '@utils/normalize.util';
 import { JobModel } from '@models/job.model';
 
 
-export class JobsSearchPage extends BasePage {
+export class JobsSearchPage extends BasePage { // TODO (dpardo): pages should be an adapter?
 
   static readonly url: string = 'https://www.linkedin.com/jobs/search';
 
 
   constructor(
     page: Page,
-    private readonly logger: Logger,
+    private readonly logger: LoggerPort,
   ) {
     super(page);
   }
@@ -149,23 +149,9 @@ export class JobsSearchPage extends BasePage {
     return true;
   }
 
-  private async getJobTitle(job: string): Promise<string | null> {
-    try {
-      const selector = `.job-card-container[data-job-id="${job}"] .visually-hidden`; // TODO (dpardo): remove "withh verification"
-      return await this.page.$eval(selector, (el) => el.textContent);
-      // if (card) {
-      //   let el = await job.$('.artdeco-entity-lockup__title strong');
-      //   el ||= await job.$('.artdeco-entity-lockup__title');
-      //   return await el?.evaluate((el: HTMLElement) => el.innerText?.trim()) ?? '';
-      // }
-
-      // await this.page.waitForSelector('.job-details-jobs-unified-top-card__job-title');
-      // return (await this.page.$eval('.job-details-jobs-unified-top-card__job-title', (el: HTMLElement) => el.innerText.trim()));
-    } catch (error) {
-      this.logger.error('Error getting job title: %s', error);
-      await this.page.pause();
-      process.exit(1);
-    }
+  private async getJobTitle(jobId: string): Promise<string | null> {
+    const selector = `.job-card-container[data-job-id="${jobId}"] .artdeco-entity-lockup__title strong`;
+    return await this.page.$eval(selector, (el) => el.textContent);
   }
 
   public async isDissmissedJob(job: string): Promise<boolean> {

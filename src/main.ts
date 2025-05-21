@@ -1,12 +1,14 @@
-import { WinstonPlugin } from '@plugins/winston.plugin';
-import { SoundNotificationAdapter } from '@plugins/sound-notification.plugin';
+import { WinstonAdapter } from '@adapters/winston.adapter';
+import { SoundNotificationAdapter } from '@adapters/sound-notification.adapter';
 import { JobCheckerApp } from '@apps/job-checker.app';
+import { ChromiumAdapter } from '@adapters/chromium.adapter';
 
+const logger = new WinstonAdapter();
 const notifier = new SoundNotificationAdapter();
-const logger = new WinstonPlugin();
+const browser = new ChromiumAdapter(logger);
 
 (async () => {
-  const jobChecker = new JobCheckerApp(notifier, logger);
+  const jobChecker = new JobCheckerApp(logger, notifier, browser);
   await jobChecker.run();
 })();
 

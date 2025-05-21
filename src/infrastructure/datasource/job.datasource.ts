@@ -1,11 +1,11 @@
 import { JobModel } from '@models/job.model';
 import { JobRepository } from '@repository/job.repository';
-import { JSONStoragePlugin } from '@plugins/json-storage.plugin';
+import { JSONStorageAdapter } from '@adapters/json-storage.adapter';
 import { Job } from '@shared/types/job.type';
 
 export class JobDatasource extends JobRepository {
 
-  private storage = new JSONStoragePlugin<Job, string>('jobs');
+  private readonly storage = new JSONStorageAdapter<Job, string>('jobs');
 
   public async exists(id: string): Promise<boolean> {
     return this.storage.exists(id);
