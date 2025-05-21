@@ -31,7 +31,6 @@ export const excludeKeywords = [
   'low code developer',
   'golang',
   'campañas publicitarias digitales',
-  'salesforce',
   'devops engineer',
   'sales manager',
   'product manager',

@@ -12,6 +12,7 @@ export const strictIncludeKeywords = [
 
   // testing
   'Playwright',
+  'Vitest',
 
   'MEAN',
 ].filter(Boolean);

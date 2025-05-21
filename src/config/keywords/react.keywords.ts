@@ -5,6 +5,7 @@ export const reactKeywords = [
   'Experience with React and TypeScript',
   'with a strong proficiency in React',
   'years of proficiency in React',
+  'alto nivel técnico en ReactJS',
   'Proven experience with React',
   'with a strong focus on React',
   'specializing in React JS',
@@ -16,6 +17,7 @@ export const reactKeywords = [
   'expert-level React',
   'ReactJS (Avanzado)',
   'features in React',
+  'Dominio de React',
   'Senior ReactJS',
   'React Native',
 ].filter(Boolean);

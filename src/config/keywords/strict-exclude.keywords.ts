@@ -37,6 +37,7 @@ export const strictExcludeKeywords = [
   'ServiceNow',
 
   // sap
+  'frontend dentro de SAP',
   'Especialista en SAP',
   'Consultor SAP',
   'SAP Developer',
@@ -49,6 +50,7 @@ export const strictExcludeKeywords = [
 
   // Salesforce
   'experience with Salesforce',
+  'Salesforce Developer',
 
   // Ruby on rails
   'ruby on rails',
@@ -112,6 +114,7 @@ export const strictExcludeKeywords = [
 
   // c++
   'C++ development skills',
+  'experienced C++',
 
   // genexus
   'Desarrollador Genexus',
@@ -121,4 +124,7 @@ export const strictExcludeKeywords = [
 
   // visual foxpro
   'Visual FoxPro',
+
+  // AI
+  'Generative AI Engineer',
 ].filter(Boolean);
