@@ -7,14 +7,14 @@ describe('normalize', () => {
     const text = `
       Hello,  WORLD!
       áéíóú | sólidos en C#
-      .NET co-construir
-      • Lorem; ::ipsum
+      (.NET/Angular) co-construir C++
+      • Lorem;    ::ipsum
       • Full-Stack (100%) remoto.,
-      (U.S. Based)
+      (U.S. Based) B2–C1
       🚀
     `;
     const normalizedText = normalize(text);
-    expect(normalizedText).toBe('hello world aeiou solidos en c# .net co-construir lorem ipsum full-stack 100% remoto. u.s. based');
+    expect(normalizedText).toBe('hello world aeiou solidos en c# .net angular co-construir c++ lorem ipsum full-stack 100% remoto. u.s. based b2 c1');
   });
 
 });
