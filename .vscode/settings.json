@@ -6,5 +6,9 @@
     "statusBarItem.remoteBackground": "#0b66c2",
     "statusBarItem.remoteForeground": "#e7e7e7"
   },
-  "peacock.color": "#0B66C2"
+  "peacock.color": "#0B66C2",
+  "explorer.fileNesting.patterns": {
+    "*.ts": "${capture}.js, ${capture}.*.ts"
+  },
+  "explorer.fileNesting.enabled": true
 }
