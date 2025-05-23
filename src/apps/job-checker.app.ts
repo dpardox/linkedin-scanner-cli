@@ -7,18 +7,17 @@ import { JobAnalyzerAI } from '@core/ai/job-analyzer.ai';
 import { NotifierPort } from '@ports/notifier.port';
 import { LoggerPort } from '@ports/logger.port';
 import { JobStatus } from '@enums/job-status.enum';
-import { FrancAdapter } from '@adapters/franc.adapter';
 import { normalize } from '@utils/normalize.util';
 import { JobSearchConfig } from '@shared/types/job-search-config.type';
 import { JobModel } from '@models/job.model';
 import { JobDatasource } from '@infrastructure/datasource/job.datasource';
 import { sleep } from '@utils/sleep.util';
 import { BrowserPort } from '@ports/browser.port';
+import { LangDetectorPort } from '@ports/lang-detector.port';
 
 export class JobCheckerApp {
 
-  private readonly langDetector = new FrancAdapter(); // TODO (dpardo): move to constructor
-  private readonly jobDatasource = new JobDatasource(); // TODO (dpardo): move to constructor
+  private readonly jobDatasource = new JobDatasource();
 
   private jobsSearchPage!: JobsSearchPage;
 
@@ -26,14 +25,15 @@ export class JobCheckerApp {
     private readonly logger: LoggerPort,
     private readonly notifier: NotifierPort,
     private readonly browser: BrowserPort,
+    private readonly langDetector: LangDetectorPort,
   ) { }
 
   public async run(): Promise<void> {
     try {
       await this.launch();
     } catch (error) {
-      this.logger.error('%s', error);
-      console.error({ error });
+      this.logger.error(error);
+      // console.error({ error });
       await this.browser.close();
       process.exit(1);
     } finally {
@@ -181,8 +181,8 @@ export class JobCheckerApp {
     if (await this.jobIsClosed(job)) return false;
     if (await this.jobHasRestrictedLocations(job, config.restrictedLocations)) return false;
     if (await this.jobHasStrictExcludedWords(job, config.keywords.strictExclude)) return false;
-    if (await this.jobHasHighSkillsMatch(job)) return true;
     if (await this.jobHasStrictIncludeWords(job, config.keywords.strictInclude)) return true;
+    if (await this.jobHasHighSkillsMatch(job)) return true;
 
     await this.IACheck(job);
 

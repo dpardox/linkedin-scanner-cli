@@ -12,6 +12,10 @@ vi.mock('@adapters/chromium.adapter', () => ({
   ChromiumAdapter: vi.fn()
 }));
 
+vi.mock('@adapters/franc.adapter', () => ({
+  FrancAdapter: vi.fn()
+}));
+
 describe('Main', () => {
 
   beforeEach(() => {

@@ -72,5 +72,3 @@ export class WinstonAdapter implements LoggerPort {
   }
 
 }
-
-// TODO (dpardo): move to plugins
