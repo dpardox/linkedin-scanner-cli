@@ -7,10 +7,12 @@ import { reactKeywords } from './react.keywords';
 import { USCitizenshipKeywords } from './us-citizenship.keywords';
 import { spainCitizenshipKeywords } from './spain-citizenship.keywords';
 import { golangKeywords } from './golang.keywords';
+import { SAPKeywords } from './sap.keywords';
 
 export const strictExcludeKeywords = [
   ...fluentEnglishKeywords,
   ...dotnetKeywords,
+  ...SAPKeywords,
   ...javaKeywords,
   ...pythonKeywords,
   ...golangKeywords,
@@ -35,15 +37,6 @@ export const strictExcludeKeywords = [
 
   //
   'ServiceNow',
-
-  // sap
-  'frontend dentro de SAP',
-  'Especialista en SAP',
-  'Consultor SAP',
-  'SAP Developer',
-  'SAP S/4 HANA',
-  'lead sap',
-  'SAP ABAP',
 
   // QA
   'Senior QA Automation Engineer',
@@ -72,6 +65,7 @@ export const strictExcludeKeywords = [
 
   // vue
   'Strong hands-on experience with Vue 3',
+  'Vue.js UI Lead',
 
   //
   'Administer and optimize Apache Kafka clusters',
@@ -133,4 +127,10 @@ export const strictExcludeKeywords = [
 
   // electron
   'Electron Developer',
+
+  // bi
+  'BI Report Engineer',
+
+  // codeigniter
+  'Experto en CodeIgniter',
 ].filter(Boolean);

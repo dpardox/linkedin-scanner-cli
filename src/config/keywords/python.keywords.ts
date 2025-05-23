@@ -9,6 +9,8 @@ export const pythonKeywords = [
   'Backend: Python, Django/Flask',
   'desarrollo backend con Python',
   'Expertise in Python language',
+  'experienca en Python FastAPI',
+  'Full Stack Developer Python',
   'Python Software Engineer',
   'Desarrollador de Python',
   'Strong Python expertise',
