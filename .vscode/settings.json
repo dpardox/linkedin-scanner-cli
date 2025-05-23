@@ -10,5 +10,9 @@
   "explorer.fileNesting.patterns": {
     "*.ts": "${capture}.js, ${capture}.*.ts"
   },
-  "explorer.fileNesting.enabled": true
+  "explorer.fileNesting.enabled": true,
+  "sonarlint.connectedMode.project": {
+    "connectionId": "dpardox",
+    "projectKey": "dpardox_linkedin-scanner-cli"
+  }
 }
