@@ -127,4 +127,10 @@ export const strictExcludeKeywords = [
 
   // AI
   'Generative AI Engineer',
+
+  // shopify
+  'Shopify Developer',
+
+  // electron
+  'Electron Developer',
 ].filter(Boolean);

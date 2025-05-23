@@ -4,10 +4,12 @@ export const pythonKeywords = [
   'years of programming experience in Python/Flask',
   'Python y PySpark (Indispensables)',
   'Experience with Flask or FastAPI',
+  'experience programming in Python',
   'sólida experiencia con FastApi',
   'Backend: Python, Django/Flask',
   'desarrollo backend con Python',
   'Expertise in Python language',
+  'Python Software Engineer',
   'Desarrollador de Python',
   'Strong Python expertise',
   'Python, Flask, FastAPI',
@@ -19,4 +21,5 @@ export const pythonKeywords = [
   'Python Specialist',
   'Python Developer',
   'Python y Flask',
+  'Senior Python',
 ].filter(Boolean);
