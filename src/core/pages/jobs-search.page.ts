@@ -282,7 +282,7 @@ export class JobsSearchPage extends BasePage { // TODO (dpardo): pages should be
   }
 
   public async markJobAsCurrent(jobId: string): Promise<void> {
-    await this.setBackgroundColor(jobId, 'lightyellow');
+    await this.setBackgroundColor(jobId, '#fdf0de');
   }
 
   public async markJobAsSeen(jobId: string) {

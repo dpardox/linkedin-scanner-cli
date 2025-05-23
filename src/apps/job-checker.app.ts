@@ -218,7 +218,7 @@ export class JobCheckerApp {
   }
 
   private markJobAsUndetermined(job: JobModel): void {
-    this.logger.info('Marking job "%s" as indeterminate...', job.id);
+    this.logger.warn('Marking job "%s" as indeterminate...', job.id);
     this.jobDatasource.update(job.id, { status: JobStatus.undetermined });
   }
 
