@@ -32,8 +32,8 @@ export class JobCheckerApp {
     try {
       await this.launch();
     } catch (error) {
-      this.logger.error(error);
-      // console.error({ error });
+      this.logger.error('%s', error);
+      console.error({ error });
       await this.browser.close();
       process.exit(1);
     } finally {
@@ -51,10 +51,6 @@ export class JobCheckerApp {
   public async launch(): Promise<void> {
     await this.browser.launch({ headless: false });
 
-    this.logger.br();
-
-    if (!await this.signIn()) return;
-
     for (const config of jobSearchConfigs) {
       this.logger.br();
       await this.processConfig(config);
@@ -67,23 +63,9 @@ export class JobCheckerApp {
     await this.browser.close();
   }
 
-  private async signIn(): Promise<boolean> {
-    const loginPage = new LoginPage(await this.browser.firstPage(), this.logger);
-    await loginPage.open();
-
-    if (!loginPage.isAuthenticated()) {
-      this.logger.error('🔐 Session not detected. Please login to LinkedIn.');
-      await this.browser.close();
-      return false;
-    }
-
-    return true;
-  }
-
   private async processConfig(config: JobSearchConfig): Promise<void> {
     const { query, location, filters } = config;
 
-    // TODO (dpardo): plugin to chromium and here use the port
     this.jobsSearchPage = new JobsSearchPage(await this.browser.firstPage(), this.logger);
     await this.jobsSearchPage.open(query, location, filters);
 
@@ -94,21 +76,12 @@ export class JobCheckerApp {
 
       for (const jobId of jobIds) {
         this.logger.br();
+        await this.jobsSearchPage.markJobAsCurrent(jobId);
         await this.checkJob(jobId, config);
+        await this.jobsSearchPage.markJobAsSeen(jobId);
+
       }
     } while (await this.jobsSearchPage.nextPage());
-  }
-
-  private async checkJob(jobId: string, config: JobSearchConfig): Promise<void> {
-    const jobModel = await this.getJobDetails(jobId);
-
-    if (await this.isDissmissedJob(jobId)) return;
-    if (await this.isAppliedJob(jobId)) return;
-    if (!await this.hasValidLanguage(jobModel)) return;
-    if (!await this.getJobFitness(jobModel, config)) return;
-
-    this.showPotentialMatch(jobModel);
-    await this.markForManualCheck(jobModel);
   }
 
   private async noJobsFound(): Promise<boolean> {
@@ -125,6 +98,7 @@ export class JobCheckerApp {
       if (job && job.status !== JobStatus.pending) {
         this.logger.br();
         this.logger.warn('Job "%s" already processed!', jobId);
+        await this.jobsSearchPage.markJobAsSeen(jobId);
         continue;
       }
 
@@ -134,6 +108,18 @@ export class JobCheckerApp {
     }
 
     return ids;
+  }
+
+  private async checkJob(jobId: string, config: JobSearchConfig): Promise<void> {
+    const jobModel = await this.getJobDetails(jobId);
+
+    if (await this.isDissmissedJob(jobId)) return;
+    if (await this.isAppliedJob(jobId)) return;
+    if (!await this.hasValidLanguage(jobModel)) return;
+    if (!await this.getJobFitness(jobModel, config)) return;
+
+    this.showPotentialMatch(jobModel);
+    await this.markForManualCheck(jobModel);
   }
 
   private async getJobDetails(jobId: string): Promise<JobModel> {
@@ -154,6 +140,7 @@ export class JobCheckerApp {
   private async isAppliedJob(jobId: string): Promise<boolean> {
     this.logger.info('Checking if job "%s" is applied...', jobId);
     if (await this.jobsSearchPage.isAppliedJob(jobId)) {
+      this.logger.warn(`You already applied to job "%s".`, jobId);
       this.jobDatasource.update(jobId, { status: JobStatus.dissmissed });
       return true;
     }
@@ -162,12 +149,11 @@ export class JobCheckerApp {
 
   private async hasValidLanguage(job: JobModel, languages: string[] = ['eng', 'spa']): Promise<boolean> {
     this.logger.info('Checking if job "%s" has valid language...', job.id);
-    // TODO (dpardo): languages in the config
-    const language = job.language(this.langDetector);
+
+    const language = job.language(this.langDetector);// TODO (dpardo): languages in the config
 
     if (!languages.includes(language)) {
       this.logger.error('Job "%s" has invalid language: %s', job.id, language);
-      await this.jobsSearchPage.dissmissJob(job.id);
       this.jobDatasource.update(job.id, { status: JobStatus.dissmissed });
       return false;
     }
@@ -186,8 +172,7 @@ export class JobCheckerApp {
 
     await this.IACheck(job);
 
-    this.logger.error('Job "%s" no matching criteria were met!', job.id);
-    // TODO (dpardo): mark job as indeterminate
+    this.markJobAsUndetermined(job);
     return false;
   }
 
@@ -232,6 +217,11 @@ export class JobCheckerApp {
     return false;
   }
 
+  private markJobAsUndetermined(job: JobModel): void {
+    this.logger.info('Marking job "%s" as indeterminate...', job.id);
+    this.jobDatasource.update(job.id, { status: JobStatus.undetermined });
+  }
+
   private async jobHasStrictIncludeWords(job: JobModel, strictIncludeWords: string[]): Promise<boolean> {
     const hasStrictIncludeWords = strictIncludeWords.some(x => matchWholeWord(job.fullDescription, x));
 
@@ -257,7 +247,6 @@ export class JobCheckerApp {
 
   private async skipJob(job: JobModel): Promise<void> {
     this.logger.info('Skipping job "%s"...', job.title);
-    await this.jobsSearchPage.dissmissJob(job.id);
     this.jobDatasource.update(job.id, { status: JobStatus.dissmissed });
   }
 
@@ -277,6 +266,7 @@ export class JobCheckerApp {
 
   private async markForManualCheck(job: JobModel): Promise<void> {
     this.logger.info('Marking job "%s" for manual check...', job.id);
+    this.jobsSearchPage.markJobForReview(job.id);
     this.notifier.notify();
     await this.jobsSearchPage.waitForJobToBeDismissed(job.id);
     this.jobDatasource.update(job.id, { status: JobStatus.dissmissed });

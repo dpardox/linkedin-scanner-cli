@@ -43,6 +43,10 @@ export class JobsSearchPage extends BasePage { // TODO (dpardo): pages should be
 
     await this.page.goto(url.href, { waitUntil: 'domcontentloaded' });
     await this.page.waitForTimeout(randms());
+
+    if (!this.page.url().startsWith(JobsSearchPage.url)) {
+      throw new Error('Failed to open jobs search page.');
+    }
   }
 
   public async noJobsFound(): Promise<boolean> {
@@ -148,7 +152,6 @@ export class JobsSearchPage extends BasePage { // TODO (dpardo): pages should be
     if (dismissed) {
       dismissed.scrollIntoViewIfNeeded();
       this.logger.warn(`Already dissmissed job "%s"`, await this.getJobTitle(job));
-      await this.setBackgroundColor(job, 'rgba(140, 140, 140, .2)');
       return true;
     }
 
@@ -165,13 +168,7 @@ export class JobsSearchPage extends BasePage { // TODO (dpardo): pages should be
     const text = await el.evaluate(el => el.textContent ?? '');
     const applied = normalize(text);
 
-    if (applied?.includes('applied')) {
-      this.logger.warn(`You already applied to job "%s".`, await this.getJobTitle(job));
-      await this.dissmissJob(job);
-      return true;
-    };
-
-    return false;
+    return applied?.includes('applied');
   }
 
   public async isEmptyJob(job: string): Promise<boolean> {
@@ -227,7 +224,6 @@ export class JobsSearchPage extends BasePage { // TODO (dpardo): pages should be
     await this.page.waitForTimeout(randms());
 
     this.logger.info(`Selected job "%s"`, await this.getJobTitle(job));
-    await this.setBackgroundColor(job, 'lightyellow');
 
     await this.alreadySelected(job);
   }
@@ -261,8 +257,8 @@ export class JobsSearchPage extends BasePage { // TODO (dpardo): pages should be
   }
 
   public async dissmissJob(job: string): Promise<void> {
-    await this.page.waitForTimeout(randms());
     this.logger.warn(`Dismissing job "%s"...`, await this.getJobTitle(job));
+    await this.page.waitForTimeout(randms());
     const selector = `.job-card-container[data-job-id="${job}"] .job-card-container__action`;
     await this.page.waitForSelector(selector);
     const button = await this.page.$(selector);
@@ -275,17 +271,26 @@ export class JobsSearchPage extends BasePage { // TODO (dpardo): pages should be
     await button.waitForElementState('visible');
     await button.waitForElementState('stable');
     await button.click();
-    await this.setBackgroundColor(job, 'rgba(140, 140, 140, .2)');
   }
 
   public async waitForJobToBeDismissed(job: string) {
     const title = await this.getJobTitle(job);
     this.logger.warn(`Waiting for "%s"...`, title);
-    await this.setBackgroundColor(job, '#daebd1');
     const selector = `.job-card-container[data-job-id="${job}"].job-card-list--is-dismissed`;
     await this.page.waitForSelector(selector, { timeout: 0 });
-    await this.setBackgroundColor(job, 'rgba(140, 140, 140, .2)'); // TODO (dpardo): move color to enum
     this.logger.success(`Job "%s" dismissed!`, title);
+  }
+
+  public async markJobAsCurrent(jobId: string): Promise<void> {
+    await this.setBackgroundColor(jobId, 'lightyellow');
+  }
+
+  public async markJobAsSeen(jobId: string) {
+    await this.setBackgroundColor(jobId, '#f4f2ee');
+  }
+
+  public async markJobForReview(jobId: string) {
+    await this.setBackgroundColor(jobId, '#daebd1');
   }
 
   public async setBackgroundColor(job: string, color: string) {
@@ -296,13 +301,3 @@ export class JobsSearchPage extends BasePage { // TODO (dpardo): pages should be
   }
 
 }
-
-
-// TODO (dpardo): test this class
-
-
-// TODO (dpardo): create scraper plugin method to recreate a human-like scroll
-
-// await page.mouse.move(100, 200);
-// await page.waitForTimeout(300);
-// await page.mouse.wheel({ deltaY: 200 });

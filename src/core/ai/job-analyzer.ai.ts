@@ -36,7 +36,7 @@ export class JobAnalyzerAI {
   public async chat(input: string) {
     await this.copyToClipboard(input);
 
-    const instructions = await this.getInstructions();
+    // const instructions = await this.getInstructions();
 
     // this.logger.info('Sending request to OpenAI...');
     // return await this.openai.responses.create({
@@ -48,4 +48,4 @@ export class JobAnalyzerAI {
 
 }
 
-// TODO (dpardo): create a test for this class
+// TODO (dpardo): remove this feature and move cliboard to a adapter
