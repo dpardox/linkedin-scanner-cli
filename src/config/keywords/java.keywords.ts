@@ -45,7 +45,7 @@ export const javaKeywords = [
   'experiencia en java',
   'framework de Spring',
   'proficiency in Java',
-  'Desarrollador Java',
+  'desarrollador Java',
   'herramientas java',
   'framework Spring',
   'Spring framework',

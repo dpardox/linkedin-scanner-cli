@@ -14,6 +14,7 @@ export const pythonKeywords = [
   'Python Software Engineer',
   'Desarrollador de Python',
   'Strong Python expertise',
+  'Experiencia con Python',
   'Python, Flask, FastAPI',
   'Proficiency in Python',
   'Desarrollo en Python',

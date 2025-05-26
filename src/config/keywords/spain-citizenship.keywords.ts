@@ -9,6 +9,7 @@ export const spainCitizenshipKeywords = [
   'residir en MADRID o alrededores',
   'Indispensable vivir en España',
   'Permiso de trabajo en España',
+  'Remote from any EU countries',
   'Residir en Galicia',
   'SPAIN BASED',
 ].filter(Boolean);

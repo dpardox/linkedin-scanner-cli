@@ -49,6 +49,7 @@ export const restrictedLocationsKeywords = [
   'Belgium',
   'Moldova',
   'Vietnam',
+  'Netherlands',
 ].filter(Boolean);
 
 // TODO (dpardo): report type playwright testing with all jobs reviewed, with red, yellow and green jobs

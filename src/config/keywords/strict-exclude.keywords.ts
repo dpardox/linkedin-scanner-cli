@@ -25,9 +25,11 @@ export const strictExcludeKeywords = [
   'Postulación válida solamente para Chile y Perú',
   'this role remotely from any EU country',
 
+  // support
+  'Software Engineer in Support',
+  'Customer Support Technician',
 
   // backend
-  'Software Engineer in Support',
   'Senior Back-End Engineer',
   'strong backend focus',
   'Backend Focused',
@@ -66,6 +68,7 @@ export const strictExcludeKeywords = [
   // vue
   'Strong hands-on experience with Vue 3',
   'Vue.js UI Lead',
+  'Lead VUEJS',
 
   //
   'Administer and optimize Apache Kafka clusters',
@@ -88,6 +91,7 @@ export const strictExcludeKeywords = [
   // Adobe Experience Manager AEM
   'años de experiencia trabajando con Adobe Experience Manager',
   'Adobe Experience Manager (AEM)',
+  'Desarrollador AEM',
   'Adobe AEM',
 
   // One Identity Manager
@@ -133,4 +137,15 @@ export const strictExcludeKeywords = [
 
   // codeigniter
   'Experto en CodeIgniter',
+
+  // devops
+  'DevOps Engineer',
+
+  // sales
+  'Sales Representative',
+
+  'la colaboración es una piedra angular',
+
+  // unpaid
+  'Voluntary Unpaid',
 ].filter(Boolean);
