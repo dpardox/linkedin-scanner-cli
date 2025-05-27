@@ -1,7 +1,6 @@
 export const pythonKeywords = [
   'years of mastery with development languages (Python',
   'Experiencia mínima de 5 años con Python (Flask)',
-  'years of programming experience in Python/Flask',
   'Python y PySpark (Indispensables)',
   'Experience with Flask or FastAPI',
   'experience programming in Python',
@@ -18,6 +17,7 @@ export const pythonKeywords = [
   'Python, Flask, FastAPI',
   'Proficiency in Python',
   'Desarrollo en Python',
+  'experience in Python',
   'Proficient in Python',
   'Strong Python skills',
   'mastery with Python',

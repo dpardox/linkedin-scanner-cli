@@ -42,12 +42,14 @@ export const strictExcludeKeywords = [
 
   // QA
   'Senior QA Automation Engineer',
+  'QA Engineer',
 
   // Salesforce
   'experience with Salesforce',
   'Salesforce Developer',
 
   // Ruby on rails
+  'Ruby highly preferred',
   'ruby on rails',
 
   //
@@ -66,8 +68,9 @@ export const strictExcludeKeywords = [
   'Past experience in building or managing crypto wallets with DeFi features',
 
   // vue
-  'Strong hands-on experience with Vue 3',
+  'Strong hands-on experience with Vue',
   'Vue.js UI Lead',
+  'Vue Developer',
   'Lead VUEJS',
 
   //
@@ -134,6 +137,7 @@ export const strictExcludeKeywords = [
 
   // bi
   'BI Report Engineer',
+  'utilizando herramientas como en Power BI',
 
   // codeigniter
   'Experto en CodeIgniter',
@@ -148,4 +152,10 @@ export const strictExcludeKeywords = [
 
   // unpaid
   'Voluntary Unpaid',
+
+  // moodle
+  ' Moodle themes',
+
+  // marketing
+  'Proficiency in marketing tools',
 ].filter(Boolean);
