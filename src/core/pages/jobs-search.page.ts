@@ -239,9 +239,9 @@ export class JobsSearchPage extends BasePage { // TODO (dpardo): pages should be
       description: '.jobs-description__container .jobs-box__html-content div',
     };
 
-    await this.page.waitForSelector(selector.title);
+    await this.page.waitForSelector(selector.title, { state: 'attached' });
     await this.page.waitForSelector(selector.location, { state: 'attached' });
-    await this.page.waitForSelector(selector.description);
+    await this.page.waitForSelector(selector.description, { state: 'attached' });
 
     await this.page.waitForTimeout(randms());
 
@@ -274,11 +274,8 @@ export class JobsSearchPage extends BasePage { // TODO (dpardo): pages should be
   }
 
   public async waitForJobToBeDismissed(job: string) {
-    const title = await this.getJobTitle(job);
-    this.logger.warn(`Waiting for "%s"...`, title);
     const selector = `.job-card-container[data-job-id="${job}"].job-card-list--is-dismissed`;
     await this.page.waitForSelector(selector, { timeout: 0 });
-    this.logger.success(`Job "%s" dismissed!`, title);
   }
 
   public async markJobAsCurrent(jobId: string): Promise<void> {

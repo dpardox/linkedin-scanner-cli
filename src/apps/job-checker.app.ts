@@ -1,9 +1,7 @@
 import { jobSearchConfigs } from '@config/main.config';
 import { JobsSearchPage } from '@core/pages/jobs-search.page';
-import { LoginPage } from '@core/pages/login.page';
 import { matchWholeWord } from '@utils/match-whole-word.util';
 import { SearchResultsContentPage } from '@core/pages/searchResultsContent.page';
-import { JobAnalyzerAI } from '@core/ai/job-analyzer.ai';
 import { NotifierPort } from '@ports/notifier.port';
 import { LoggerPort } from '@ports/logger.port';
 import { JobStatus } from '@enums/job-status.enum';
@@ -11,7 +9,6 @@ import { normalize } from '@utils/normalize.util';
 import { JobSearchConfig } from '@shared/types/job-search-config.type';
 import { JobModel } from '@models/job.model';
 import { JobDatasource } from '@infrastructure/datasource/job.datasource';
-import { sleep } from '@utils/sleep.util';
 import { BrowserPort } from '@ports/browser.port';
 import { LangDetectorPort } from '@ports/lang-detector.port';
 
@@ -20,6 +17,8 @@ export class JobCheckerApp {
   private readonly jobDatasource = new JobDatasource();
 
   private jobsSearchPage!: JobsSearchPage;
+
+  private showUndetermined: boolean = false;
 
   constructor (
     private readonly logger: LoggerPort,
@@ -32,19 +31,20 @@ export class JobCheckerApp {
     try {
       await this.launch();
     } catch (error) {
-      this.logger.error('%s', error);
-      console.error({ error });
+      this.logger.error('An error occurred during the job checking process...');
+      console.error(error);
+      const page = await this.browser.lastPage();
+      this.notifier.notify();
+      await page.pause();
       await this.browser.close();
       process.exit(1);
     } finally {
       await this.browser.close();
-      const minutes = 5;
       this.logger.br();
-      this.logger.warn('Waiting %d minutes before next run...', minutes);
-      await sleep(minutes * 60 * 1000);
+      this.logger.info('Second run including UNDETERMINED jobs!');
       this.logger.br();
-      await this.run();
-      // TODO (dpardo): in the second run, set presume fitness to true
+      this.showUndetermined = true;
+      await this.launch();
     }
   }
 
@@ -91,11 +91,14 @@ export class JobCheckerApp {
   private async getJobIds(): Promise<string[]> {
     let jobIds = await this.jobsSearchPage.getJobIds();
 
+    const statuses = [JobStatus.pending];
+    this.showUndetermined && statuses.push(JobStatus.undetermined);
+
     const ids = [];
 
     for (const jobId of jobIds) {
       const job = await this.jobDatasource.findById(jobId);
-      if (job && job.status !== JobStatus.pending) {
+      if (job && !statuses.includes(job.status)) {
         this.logger.br();
         this.logger.warn('Job "%s" already processed!', jobId);
         await this.jobsSearchPage.markJobAsSeen(jobId);
@@ -169,11 +172,7 @@ export class JobCheckerApp {
     if (await this.jobHasStrictExcludedWords(job, config.keywords.strictExclude)) return false;
     if (await this.jobHasStrictIncludeWords(job, config.keywords.strictInclude)) return true;
     if (await this.jobHasHighSkillsMatch(job)) return true;
-
-    await this.IACheck(job);
-
-    this.markJobAsUndetermined(job);
-    return false;
+    return await this.checkUndeterminedJob(job);
   }
 
   private async jobIsClosed(job: JobModel): Promise<boolean> {
@@ -209,19 +208,6 @@ export class JobCheckerApp {
     return false;
   }
 
-  private async jobHasHighSkillsMatch(job: JobModel): Promise<boolean> {
-    if (job.highSkillsMatch) {
-      this.logger.success('Job "%s" has high skills match!', job.id);
-      return true;
-    }
-    return false;
-  }
-
-  private markJobAsUndetermined(job: JobModel): void {
-    this.logger.warn('Marking job "%s" as indeterminate...', job.id);
-    this.jobDatasource.update(job.id, { status: JobStatus.undetermined });
-  }
-
   private async jobHasStrictIncludeWords(job: JobModel, strictIncludeWords: string[]): Promise<boolean> {
     const hasStrictIncludeWords = strictIncludeWords.some(x => matchWholeWord(job.fullDescription, x));
 
@@ -233,21 +219,28 @@ export class JobCheckerApp {
     return false;
   }
 
-  private async IACheck(job: JobModel): Promise<void> {
-    this.logger.info('Checking if job "%s" is AI generated...', job.id);
-    const jobAnalyzerAI = new JobAnalyzerAI(this.logger);
-    await jobAnalyzerAI.chat(job.description);
-    // const gptResponse = await jobAnalyzerAI.chat(raw.content);
-
-    // if (gptResponse) {
-    //   Log.info('AI analysis: %O', gptResponse);
-    //   // Log.info('AI analysis: %s', gptResponse?.output_text?.trim());
-    // }
+  private async jobHasHighSkillsMatch(job: JobModel): Promise<boolean> {
+    if (job.highSkillsMatch) {
+      this.logger.success('Job "%s" has high skills match!', job.id);
+      return true;
+    }
+    return false;
   }
 
   private async skipJob(job: JobModel): Promise<void> {
     this.logger.info('Skipping job "%s"...', job.title);
     this.jobDatasource.update(job.id, { status: JobStatus.dissmissed });
+  }
+
+  private async checkUndeterminedJob(job: JobModel): Promise<boolean> {
+    this.logger.info('Checking if job "%s" is a undetermined...', job.id);
+    !this.showUndetermined && this.markJobAsUndetermined(job);
+    return this.showUndetermined;
+  }
+
+  private markJobAsUndetermined(job: JobModel): void {
+    this.logger.warn('Marking job "%s" as undetermined...', job.id);
+    this.jobDatasource.update(job.id, { status: JobStatus.undetermined });
   }
 
   private showPotentialMatch(job: JobModel): void {
@@ -266,10 +259,11 @@ export class JobCheckerApp {
 
   private async markForManualCheck(job: JobModel): Promise<void> {
     this.logger.info('Marking job "%s" for manual check...', job.id);
-    this.jobsSearchPage.markJobForReview(job.id);
+    await this.jobsSearchPage.markJobForReview(job.id);
     this.notifier.notify();
     await this.jobsSearchPage.waitForJobToBeDismissed(job.id);
-    this.jobDatasource.update(job.id, { status: JobStatus.dissmissed });
+    await this.jobDatasource.update(job.id, { status: JobStatus.dissmissed });
+    this.logger.success('Job "%s" reviewed!', job.title);
   }
 
 }
