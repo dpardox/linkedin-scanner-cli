@@ -35,5 +35,3 @@ export class SearchResultsContentPage {
   }
 
 }
-
-// TODO (dpardo): test this class

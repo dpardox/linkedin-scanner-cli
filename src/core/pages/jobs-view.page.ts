@@ -5,9 +5,8 @@ export class JobsViewPage {
 
   static readonly url: string = 'https://www.linkedin.com/jobs/view';
 
-  constructor(private page: Page) { }
+  constructor(
+    private readonly page: Page,
+  ) { }
 
 }
-
-
-// TODO (dpardo): test this class

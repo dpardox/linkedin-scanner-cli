@@ -1,7 +1,5 @@
 import { ElementHandle, Page } from 'playwright';
-
 import { randms } from '@utils/randms.util';
-
 
 
 export class BasePage {
@@ -34,6 +32,3 @@ export class BasePage {
   }
 
 }
-
-// TODO (dpardo): review if this should be in a plugin
-// TODO (dpardo): test this class

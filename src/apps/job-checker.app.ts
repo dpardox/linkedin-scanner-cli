@@ -153,7 +153,7 @@ export class JobCheckerApp {
   private async hasValidLanguage(job: JobModel, languages: string[] = ['eng', 'spa']): Promise<boolean> {
     this.logger.info('Checking if job "%s" has valid language...', job.id);
 
-    const language = job.language(this.langDetector);// TODO (dpardo): languages in the config
+    const language = job.language(this.langDetector);
 
     if (!languages.includes(language)) {
       this.logger.error('Job "%s" has invalid language: %s', job.id, language);
@@ -268,7 +268,5 @@ export class JobCheckerApp {
 
 }
 
-
-// TODO (dpardo): doesn't dissmiss the job use the database to check if the job was already processed
+// TODO (dpardo): implement typeORM and SQLite
 // TODO (dpardo): clean the database after one week
-// TODO (dpardo): on error re-run n times (.env)

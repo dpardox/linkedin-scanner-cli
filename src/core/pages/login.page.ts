@@ -31,5 +31,3 @@ export class LoginPage {
   }
 
 }
-
-// TODO (dpardo): test this class
