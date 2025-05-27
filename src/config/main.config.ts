@@ -1,1 +1,1 @@
-export { jobSearchConfigs } from 'config.scraper';
+export { jobSearchConfigs } from 'config.scanner';

@@ -126,8 +126,8 @@
   "include": [
     "src/config/keywords/**/*.ts",
     "src/**/*.ts",
-    "config.scraper.ts",
-    "config.scraper.template.ts"
+    "config.scanner.ts",
+    "config.scanner.template.ts"
   ],
   "exclude": [
     "node_modules",

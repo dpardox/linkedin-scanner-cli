@@ -21,19 +21,19 @@ To avoid automating the login process, this project uses the `li_at` session coo
 LINKEDIN_COOKIE="your_li_at_cookie_value_here"
 ```
 
-7. Save the file. Now your scraper will authenticate using this cookie automatically.
+7. Save the file. Now your scanner will authenticate using this cookie automatically.
 
 ⚠️ Note: The `li_at` cookie typically expires after about 2 weeks. If LinkedIn redirects you to the login page again, you may need to repeat this process.
 
 ### Configuration
 
-Copy the `config.scraper.template.ts` file to `config.scraper.ts` and adjust the configuration as needed.
+Copy the `config.scanner.template.ts` file to `config.scanner.ts` and adjust the configuration as needed.
 
 Run `npm i` to install the dependencies.
 
 ## How to run
 
-Run `npm start` to launch the scraper.
+Run `npm start` to launch the scanner.
 
 ---
 
