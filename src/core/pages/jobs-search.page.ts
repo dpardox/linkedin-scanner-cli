@@ -9,7 +9,7 @@ import { normalize } from '@utils/normalize.util';
 import { JobModel } from '@models/job.model';
 
 
-export class JobsSearchPage extends BasePage { // TODO (dpardo): pages should be an adapter?
+export class JobsSearchPage extends BasePage {
 
   static readonly url: string = 'https://www.linkedin.com/jobs/search';
 

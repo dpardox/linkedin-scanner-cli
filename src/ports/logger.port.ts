@@ -5,5 +5,3 @@ export interface LoggerPort {
   error(...args: unknown[]): void;
   br(): void;
 }
-
-// TODO (dpardo): move to interfaces

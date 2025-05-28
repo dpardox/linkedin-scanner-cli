@@ -273,6 +273,3 @@ export class JobCheckerApp {
   }
 
 }
-
-// TODO (dpardo): implement typeORM and SQLite
-// TODO (dpardo): clean the database after one week

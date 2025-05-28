@@ -84,7 +84,6 @@ export class ChromiumAdapter implements BrowserPort {
   }
 
   public isClosed(): boolean {
-    console.log({ isConnected: this.browser.isConnected(), pages: this.browserContext.pages() }); // TODO (dpardo): delete
     return !this.browser.isConnected() || this.browserContext.pages().length === 0;
   }
 

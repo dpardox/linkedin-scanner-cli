@@ -17,6 +17,3 @@ export function matchWholeWord(text: string, word: string): boolean {
 function escapeRegExp(text: string) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
-
-
-// TODO (dpardo): test this function
