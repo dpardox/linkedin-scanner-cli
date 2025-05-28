@@ -240,6 +240,7 @@ export class JobCheckerApp {
   private async checkUndeterminedJob(job: JobModel): Promise<boolean> {
     this.logger.info('Checking if job "%s" is a undetermined...', job.id);
     !this.showUndetermined && this.markJobAsUndetermined(job);
+    this.showUndetermined && this.logger.warn('Job "%s" is undetermined!', job.id);
     return this.showUndetermined;
   }
 
