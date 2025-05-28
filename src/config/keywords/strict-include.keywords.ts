@@ -7,12 +7,16 @@ export const strictIncludeKeywords = [
 
   // backend
   // 'PHP',
-  'NodeJS', 'Node.js', 'Node JS', 'Node',
+  // 'NodeJS', 'Node.js', 'Node JS', 'Node',
   // 'Express',
 
-  // testing
-  'Playwright',
-  'Vitest',
+  // mobile
+  // 'Dart', 'Flutter',
+  // 'ionic',
 
-  'MEAN',
+  // testing
+  // 'Playwright',
+  // 'Vitest',
+
+  // 'MEAN',
 ].filter(Boolean);

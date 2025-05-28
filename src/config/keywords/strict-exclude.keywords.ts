@@ -35,6 +35,7 @@ export const strictExcludeKeywords = [
   'Backend Focused',
 
   // practices
+  'Buscamos estudiantes avanzados o recién graduados',
   'Practicante de desarrollo',
 
   //
@@ -47,6 +48,7 @@ export const strictExcludeKeywords = [
   // Salesforce
   'experience with Salesforce',
   'Salesforce Developer',
+  'Arquitecto de Salesforce',
 
   // Ruby on rails
   'Ruby highly preferred',
@@ -69,8 +71,10 @@ export const strictExcludeKeywords = [
 
   // vue
   'Strong hands-on experience with Vue',
+  'Programador VueJS',
   'Vue.js UI Lead',
   'Vue Developer',
+  'Lead Vue.js',
   'Lead VUEJS',
 
   //
@@ -106,6 +110,7 @@ export const strictExcludeKeywords = [
 
   // oracle
   'Oracle Developer (Forms y Reports)',
+  'Oracle Hyperion Planning',
 
   // medix
   'years of development experience in Medix',
@@ -158,4 +163,10 @@ export const strictExcludeKeywords = [
 
   // marketing
   'Proficiency in marketing tools',
+
+  // cells
+  'Experiencia en desarrollo con Cells',
+
+  //
+  'experience with ThingWorx Navigate',
 ].filter(Boolean);

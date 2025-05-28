@@ -9,6 +9,7 @@ export const pythonKeywords = [
   'desarrollo backend con Python',
   'Expertise in Python language',
   'experienca en Python FastAPI',
+  'años demostrables con Python',
   'Full Stack Developer Python',
   'Python Software Engineer',
   'Desarrollador de Python',
