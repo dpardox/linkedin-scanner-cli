@@ -23,9 +23,11 @@ export class SearchResultsContentPage {
     url.searchParams.append('sid', 'G%3Bc');
     url.searchParams.append('sortBy', '"date_posted"');
 
-    await this.page.goto(url.href, { waitUntil: 'domcontentloaded' }); // TODO (dpardo): move to browser plugin
+    await this.page.goto(url.href, { waitUntil: 'domcontentloaded' });
+  }
 
-    this.logger.info('Waiting check posts...');
+  public async waitForManualClose(): Promise<void> {
+    this.logger.info('Waiting for manual close...');
     await new Promise<void>((resolve) => {
       this.page.once('close', () => {
         this.logger.info('Page manually closed.');

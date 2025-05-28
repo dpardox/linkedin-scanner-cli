@@ -23,7 +23,9 @@ export class ChromiumAdapter implements BrowserPort {
     '--ignore-certificate-errors',
   ];
 
-  private browserContext!: BrowserContext;
+  public browser!: Browser;
+
+  public browserContext!: BrowserContext;
 
   constructor(
     private readonly logger: LoggerPort,
@@ -31,10 +33,10 @@ export class ChromiumAdapter implements BrowserPort {
 
   public async launch(config: { headless: boolean }): Promise<void> {
     this.logger.info('Launching browser...');
-    const browser = await this.launchBrowser(config.headless);
+    this.browser = await this.launchBrowser(config.headless);
 
     this.logger.info('Launching browser context...');
-    const context = await this.newBrowserContext(browser);
+    const context = await this.newBrowserContext(this.browser);
 
     this.logger.info('Adding LinkedIn Cookie...');
     const cookie = this.buildLinkedInCookie();
@@ -78,6 +80,12 @@ export class ChromiumAdapter implements BrowserPort {
   public async close(): Promise<void> {
     this.logger.warn('Closing browser...');
     await this.browserContext.close();
+    await this.browser.close();
+  }
+
+  public isClosed(): boolean {
+    console.log({ isConnected: this.browser.isConnected(), pages: this.browserContext.pages() }); // TODO (dpardo): delete
+    return !this.browser.isConnected() || this.browserContext.pages().length === 0;
   }
 
   public async firstPage(): Promise<Page> {

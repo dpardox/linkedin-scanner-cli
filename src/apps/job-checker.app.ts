@@ -29,26 +29,30 @@ export class JobCheckerApp {
 
   public async run(): Promise<void> {
     try {
-      await this.launch();
+      await this.tryRun();
+
+      this.logger.br();
+      this.logger.success('Second run including UNDETERMINED jobs!');
+      this.logger.br();
+
+      this.showUndetermined = true;
+      await this.tryRun();
+
     } catch (error) {
       this.logger.error('An error occurred during the job checking process...');
       console.error(error);
+
+      if (this.browser.isClosed()) process.exit(1);
+
       const page = await this.browser.lastPage();
       this.notifier.notify();
       await page.pause();
       await this.browser.close();
       process.exit(1);
-    } finally {
-      await this.browser.close();
-      this.logger.br();
-      this.logger.info('Second run including UNDETERMINED jobs!');
-      this.logger.br();
-      this.showUndetermined = true;
-      await this.launch();
     }
   }
 
-  public async launch(): Promise<void> {
+  public async tryRun(): Promise<void> {
     await this.browser.launch({ headless: false });
 
     for (const config of jobSearchConfigs) {
@@ -59,6 +63,7 @@ export class JobCheckerApp {
     const searchResultsContentPage = new SearchResultsContentPage(await this.browser.firstPage(), this.logger);
     this.notifier.notify();
     await searchResultsContentPage.open();
+    await searchResultsContentPage.waitForManualClose();
 
     await this.browser.close();
   }
