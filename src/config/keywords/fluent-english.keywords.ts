@@ -61,6 +61,7 @@ export const fluentEnglishKeywords = [
   'Inglés fluido B2 C1',
   'English: C1 Advance',
   'Fluency in English',
+  'C1+ English Level',
   'English: C1 level',
   'B2+ English level',
   'Fluent in English',

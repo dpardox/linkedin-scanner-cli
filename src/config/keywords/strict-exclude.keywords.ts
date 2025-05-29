@@ -47,8 +47,9 @@ export const strictExcludeKeywords = [
 
   // Salesforce
   'experience with Salesforce',
-  'Salesforce Developer',
+  'Desarrollador Salesforce',
   'Arquitecto de Salesforce',
+  'Salesforce Developer',
 
   // Ruby on rails
   'Ruby highly preferred',
