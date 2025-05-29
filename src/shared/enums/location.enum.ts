@@ -2,7 +2,7 @@ export enum Location {
   argentina = 100446943,
   chile = 104621616,
   colombia = 100876405,
-  costaRica = 4233698185,
+  costaRica = 101739942,
   dominicanRepublic = 105057336,
   florida = 101318387,
   latinAmerica = 91000011,

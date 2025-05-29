@@ -20,12 +20,12 @@ export const jobSearchConfigs: JobSearchConfig[] = [
      * Location where to search for jobs.
      *
      * Use a predefined Location enum:
-     * Example: Location.colombia
+     * Example: [ Location.colombia, Location.argentina ]
      *
      * Or provide a LinkedIn location ID:
      * Example: 100876405
      */
-    location: Location.worldwide,
+    locations: [ Location.colombia ],
 
     /**
      * Locations to exclude from the search.

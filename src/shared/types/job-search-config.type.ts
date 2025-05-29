@@ -4,8 +4,12 @@ import { Keywords } from './keywords';
 
 export type JobSearchConfig = {
   query: string;
-  location: Location; // TODO (dpardo): support multiple locations
+  locations: Location[];
   restrictedLocations: string[];
   filters: Filters;
   keywords: Keywords;
+};
+
+export type ExpandedJobSearchConfig = Omit<JobSearchConfig, 'locations'> & {
+  location: Location;
 };

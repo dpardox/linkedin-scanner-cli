@@ -6,11 +6,12 @@ import { NotifierPort } from '@ports/notifier.port';
 import { LoggerPort } from '@ports/logger.port';
 import { JobStatus } from '@enums/job-status.enum';
 import { normalize } from '@utils/normalize.util';
-import { JobSearchConfig } from '@shared/types/job-search-config.type';
+import { ExpandedJobSearchConfig, JobSearchConfig } from '@shared/types/job-search-config.type';
 import { JobModel } from '@models/job.model';
 import { JobDatasource } from '@infrastructure/datasource/job.datasource';
 import { BrowserPort } from '@ports/browser.port';
 import { LangDetectorPort } from '@ports/lang-detector.port';
+
 
 export class JobCheckerApp {
 
@@ -55,9 +56,13 @@ export class JobCheckerApp {
   public async tryRun(): Promise<void> {
     await this.browser.launch({ headless: false });
 
-    for (const config of jobSearchConfigs) {
+    this.jobsSearchPage = new JobsSearchPage(await this.browser.firstPage(), this.logger);
+
+    const expandedConfigs = await this.expandConfigs(jobSearchConfigs);
+
+    for (const config of expandedConfigs) {
       this.logger.br();
-      await this.processConfig(config);
+      await this.jobSearch(config);
     }
 
     const searchResultsContentPage = new SearchResultsContentPage(await this.browser.firstPage(), this.logger);
@@ -68,10 +73,18 @@ export class JobCheckerApp {
     await this.browser.close();
   }
 
-  private async processConfig(config: JobSearchConfig): Promise<void> {
-    const { query, location, filters } = config;
+  private async expandConfigs(configs: JobSearchConfig[]): Promise<ExpandedJobSearchConfig[]> {
+    return configs.flatMap(config => {
+      const { locations } = config;
+      return locations.map(location => ({
+        ...config,
+        location,
+      }));
+    });
+  }
 
-    this.jobsSearchPage = new JobsSearchPage(await this.browser.firstPage(), this.logger);
+  private async jobSearch(config: ExpandedJobSearchConfig): Promise<void> {
+    const { query, location, filters } = config;
     await this.jobsSearchPage.open(query, location, filters);
 
     do {
@@ -118,7 +131,7 @@ export class JobCheckerApp {
     return ids;
   }
 
-  private async checkJob(jobId: string, config: JobSearchConfig): Promise<void> {
+  private async checkJob(jobId: string, config: ExpandedJobSearchConfig): Promise<void> {
     const jobModel = await this.getJobDetails(jobId);
 
     if (await this.isDissmissedJob(jobId)) return;
@@ -169,7 +182,7 @@ export class JobCheckerApp {
     return true;
   }
 
-  private async getJobFitness(job: JobModel, config: JobSearchConfig): Promise<boolean> {
+  private async getJobFitness(job: JobModel, config: ExpandedJobSearchConfig): Promise<boolean> {
     this.logger.info('Checking if job "%s" is a good fit...', job.id);
 
     if (await this.jobIsClosed(job)) return false;
