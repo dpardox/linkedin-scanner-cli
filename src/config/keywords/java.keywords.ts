@@ -13,6 +13,7 @@ export const javaKeywords = [
   'High level programming languages: Java',
   'Extensive experience working with Java',
   'experience with the Java Standard API',
+  'development using the Java ecosystem',
   'Experiencia mínima de 5 años en Java',
   'required developments over our Java',
   'años reales como programador/a Java',

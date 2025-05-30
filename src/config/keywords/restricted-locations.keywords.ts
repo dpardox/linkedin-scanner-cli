@@ -51,4 +51,5 @@ export const restrictedLocationsKeywords = [
   'Vietnam',
   'Netherlands',
   'Israel',
+  'Lithuania',
 ].filter(Boolean);

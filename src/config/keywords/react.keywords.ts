@@ -6,6 +6,7 @@ export const reactKeywords = [
   'experience working with React',
   'alto nivel técnico en ReactJS',
   'with a strong focus on React',
+  'Front-End utilizando React',
   'experience with React.js',
   'Frontend Developer React',
   'especializado en React',

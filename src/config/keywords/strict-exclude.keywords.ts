@@ -53,6 +53,7 @@ export const strictExcludeKeywords = [
 
   // Ruby on rails
   'Ruby highly preferred',
+  'experience with Ruby',
   'ruby on rails',
 
   //
@@ -170,4 +171,7 @@ export const strictExcludeKeywords = [
 
   //
   'experience with ThingWorx Navigate',
+
+  // rpg
+  'experiencia sólida en RPG',
 ].filter(Boolean);

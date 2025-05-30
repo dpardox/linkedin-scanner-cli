@@ -1,6 +1,7 @@
 export const fluentEnglishKeywords = [
   'Excellent communication skills in both verbal and written English',
   'proficiency in English is essential to effectively communicate',
+  'excellent written and verbal communication skills in English',
   'Communicate effectively in English, both written and verbal',
   'Strong verbal and written communication skills in English',
   'Strong verbal and written English communication skills',
@@ -34,6 +35,7 @@ export const fluentEnglishKeywords = [
   'English level Upper-Intermediate',
   'ingles conversacional mínimo B2',
   'both written and spoken English',
+  'level of English is advanced C1',
   'C1+ / English Bilingual Skills',
   'High-level English proficiency',
   'Strong proficiency in English',
