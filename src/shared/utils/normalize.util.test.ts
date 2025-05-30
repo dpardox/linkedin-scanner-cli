@@ -5,17 +5,17 @@ describe('normalize', () => {
 
   test('should return the normalized text', () => {
     const text = `
-      Hello,  WORLD! nosotr@s
+      Hello,  WORLD! - nosotr@s
       áéíóú | sólidos en C#
       (.NET/Angular) co-construir C++
       • Lorem;    ::ipsum
-      • Full-Stack (100%) remoto.,
+      -Full-Stack (100%) remoto.,
       (U.S. Based) B2–C1
       un/a desarrollador/a java
       🚀
     `;
     const normalizedText = normalize(text);
-    expect(normalizedText).toBe('hello world nosotros aeiou solidos en c# .net angular co-construir c++ lorem ipsum full-stack 100% remoto. u.s. based b2 c1 un desarrollador java');
+    expect(normalizedText).toBe('hello world nosotros aeiou solidos en c# .net angular co construir c++ lorem ipsum full stack 100% remoto. u.s. based b2 c1 un desarrollador java');
   });
 
 });
