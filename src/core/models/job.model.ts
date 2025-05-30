@@ -40,7 +40,7 @@ export class JobModel implements Job {
   }
 
   public language(detector: LangDetectorPort): string {
-    return detector.detect(normalize(this.description.slice(0, 500)));
+    return detector.detect(normalize(this.description));
   }
 
 }
