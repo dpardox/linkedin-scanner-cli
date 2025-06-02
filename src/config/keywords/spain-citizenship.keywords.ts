@@ -1,6 +1,7 @@
 export const spainCitizenshipKeywords = [
   'Disponibilidad para ir dos veces al trimestre a Madrid',
   'Work must be performed exclusively from Spain',
+  'Residir en España es un requisito Excluyente',
   'remote position for people located in Spain',
   'Imprescindible estar ubicado en España',
   'SOLO CANDIDATOS QUE VIVEN EN ESPAÑA',

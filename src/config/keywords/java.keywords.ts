@@ -19,6 +19,7 @@ export const javaKeywords = [
   'años reales como programador/a Java',
   'Java (Core and advanced concepts)',
   'Java programming at senior level',
+  'experience developing with Java',
   'utilizando Java para el backend',
   'implement solutions using Java',
   'Experto en Java 1.8 y superior',
