@@ -30,6 +30,7 @@ export const strictExcludeKeywords = [
   'Customer Support Technician',
 
   // backend
+  'Full Stack Developer Backend Focus',
   'Senior Back-End Engineer',
   'strong backend focus',
   'Backend Focused',
@@ -52,6 +53,7 @@ export const strictExcludeKeywords = [
   'Salesforce Developer',
 
   // Ruby on rails
+  'Experiencia Desarrollo Ruby',
   'Ruby highly preferred',
   'experience with Ruby',
   'ruby on rails',
@@ -73,6 +75,7 @@ export const strictExcludeKeywords = [
 
   // vue
   'Strong hands-on experience with Vue',
+  'frontend en Vue.js',
   'Programador VueJS',
   'Vue.js UI Lead',
   'Vue Developer',
@@ -87,6 +90,7 @@ export const strictExcludeKeywords = [
 
   // PM
   'Project Manager - Sr. Specialist Developer',
+  'experiencia como Project Manager',
 
   //
   'expert@ en la solución ITSM de Helix',
