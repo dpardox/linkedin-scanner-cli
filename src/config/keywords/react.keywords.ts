@@ -13,6 +13,7 @@ export const reactKeywords = [
   'experience with React.js',
   'Frontend Developer React',
   'expert in the MERN stack',
+  'years ReactJS experience',
   'especializado en React',
   'experience with React',
   'experiencia con REACT',

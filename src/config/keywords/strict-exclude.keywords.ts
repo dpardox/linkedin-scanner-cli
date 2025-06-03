@@ -33,6 +33,7 @@ export const strictExcludeKeywords = [
   'Full Stack Developer Backend Focus',
   'Senior Back-End Engineer',
   'strong backend focus',
+  'Backend Engineer',
   'Backend Focused',
 
   // practices
@@ -162,6 +163,7 @@ export const strictExcludeKeywords = [
   // sales
   'Sales Representative',
 
+  //
   'la colaboración es una piedra angular',
 
   // unpaid
