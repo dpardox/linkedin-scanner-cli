@@ -47,6 +47,7 @@ export const strictExcludeKeywords = [
   'QA Engineer',
 
   // Salesforce
+  'Strong expertise in Salesforce Sales Cloud',
   'experience with Salesforce',
   'Desarrollador Salesforce',
   'Arquitecto de Salesforce',
@@ -75,6 +76,8 @@ export const strictExcludeKeywords = [
 
   // vue
   'Strong hands-on experience with Vue',
+  'Indispensable experiencia en VUE',
+  'años trabajando con Vue.js',
   'frontend en Vue.js',
   'Programador VueJS',
   'Vue.js UI Lead',
@@ -162,6 +165,7 @@ export const strictExcludeKeywords = [
   'la colaboración es una piedra angular',
 
   // unpaid
+  'No habrá un sueldo fijo',
   'Voluntary Unpaid',
 
   // moodle
@@ -178,4 +182,10 @@ export const strictExcludeKeywords = [
 
   // rpg
   'experiencia sólida en RPG',
+
+  // appian
+  'arquitectura de soluciones Appian',
+
+  // zapier
+  'Experience with Zapier',
 ].filter(Boolean);

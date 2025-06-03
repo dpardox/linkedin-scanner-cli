@@ -9,6 +9,7 @@ export const javaKeywords = [
   'server side programming languages like Java',
   'Develop and mantain Java-based applications',
   'Java (JEE) technologies: Java Core, Spring',
+  'Experiencia previa en desarrollo en Java',
   'desarrollar soluciones backend con java',
   'Lenguajes de programación (Spring, Java',
   'High level programming languages: Java',
