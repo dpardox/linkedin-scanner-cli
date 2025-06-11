@@ -32,6 +32,7 @@ export const strictExcludeKeywords = [
   // backend
   'Full Stack Developer Backend Focus',
   'Senior Back-End Engineer',
+  'Desarrollador Backend',
   'strong backend focus',
   'Backend Engineer',
   'Backend Focused',
@@ -187,7 +188,14 @@ export const strictExcludeKeywords = [
 
   // appian
   'arquitectura de soluciones Appian',
+  'Appian Expertise Required',
 
   // zapier
   'Experience with Zapier',
+
+  // scrum master
+  'Scrum Master',
+
+  // junior
+  'Junior Developer',
 ].filter(Boolean);

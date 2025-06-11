@@ -63,9 +63,10 @@ export const javaKeywords = [
   'Senior en Java',
   'Java Developer',
   'Strong in Java',
+  'Java Mandatory',
   'Java Spring',
   'Spring Boot',
   'springboot',
-  'Sr. Java',
   'Spring MVC',
+  'Sr. Java',
 ].filter(Boolean);
