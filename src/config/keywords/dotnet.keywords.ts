@@ -67,6 +67,7 @@ export const dotnetKeywords = [
   'Integrate C#',
   'using .NET',
   '.NET Core',
+  'using C#',
   '.NET, C#',
   'ASP.NET',
   'C# .Net',

@@ -71,6 +71,7 @@ export const fluentEnglishKeywords = [
   'Inglés fluido B2 C1',
   'English: C1 Advance',
   'Fluency in English',
+  'English (required)',
   'Nivel de inglés B2',
   'C1+ English Level',
   'English: C1 level',
@@ -84,5 +85,6 @@ export const fluentEnglishKeywords = [
   'Polish (Fluent)',
   'Inglés Avanzado',
   'Fluent English',
+  'english only',
   'Inglés C1',
 ].filter(Boolean);

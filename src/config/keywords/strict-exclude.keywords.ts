@@ -24,6 +24,8 @@ export const strictExcludeKeywords = [
   // citizenship
   'Postulación válida solamente para Chile y Perú',
   'this role remotely from any EU country',
+  'Australian Citizen only',
+  'Europe-based',
 
   // support
   'Software Engineer in Support',
@@ -34,6 +36,7 @@ export const strictExcludeKeywords = [
   'Senior Back-End Engineer',
   'Desarrollador Backend',
   'strong backend focus',
+  'Back End Developer',
   'Backend Engineer',
   'Backend Focused',
 
@@ -80,6 +83,7 @@ export const strictExcludeKeywords = [
   'Strong hands-on experience with Vue',
   'Indispensable experiencia en VUE',
   'años trabajando con Vue.js',
+  'Vue as primary skills',
   'frontend en Vue.js',
   'Programador VueJS',
   'Vue.js UI Lead',

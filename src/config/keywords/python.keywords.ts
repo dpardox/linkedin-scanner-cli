@@ -18,6 +18,7 @@ export const pythonKeywords = [
   'Solid experience with Python',
   'Full Stack Developer Python',
   'Full Stack Engineer Python',
+  'Advanced skills in Python',
   'Python Software Engineer',
   'Desarrollador de Python',
   'Strong Python expertise',
