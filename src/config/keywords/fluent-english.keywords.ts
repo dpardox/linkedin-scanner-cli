@@ -14,6 +14,7 @@ export const fluentEnglishKeywords = [
   'requires a minimum of a B1 English comprehension',
   'Nivel alto de inglés, tanto hablado como escrito',
   'Strong English verbal and written communication',
+  'parte del proceso de selección será en inglés',
   'Nivel de inglés hablado y escrito medio/alto',
   'AI interview from your computer in English',
   'daily communication with English-speaking',

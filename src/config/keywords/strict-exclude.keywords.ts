@@ -27,6 +27,9 @@ export const strictExcludeKeywords = [
   'Australian Citizen only',
   'Europe-based',
 
+  // companies
+  'Jobot Consulting',
+
   // support
   'Software Engineer in Support',
   'Customer Support Technician',
@@ -90,6 +93,7 @@ export const strictExcludeKeywords = [
   'Vue Developer',
   'Lead Vue.js',
   'Lead VUEJS',
+  'Vue 3',
 
   //
   'Administer and optimize Apache Kafka clusters',
@@ -202,4 +206,7 @@ export const strictExcludeKeywords = [
 
   // junior
   'Junior Developer',
+
+  // azure
+  'Experience working with Azure environment',
 ].filter(Boolean);
