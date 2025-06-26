@@ -1,6 +1,7 @@
 export const SAPKeywords = [
   'frontend dentro de SAP',
   'Especialista en SAP',
+  'SAP Commerce Cloud',
   'experience in SAP',
   'Consultor SAP',
   'SAP Developer',

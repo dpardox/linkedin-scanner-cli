@@ -69,5 +69,6 @@ export const javaKeywords = [
   'Spring Boot',
   'springboot',
   'Spring MVC',
+  'Java v.8',
   'Sr. Java',
 ].filter(Boolean);

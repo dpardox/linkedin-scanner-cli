@@ -38,6 +38,7 @@ export const pythonKeywords = [
   'Python Developer',
   'Back-end Python',
   'Django, FastAPI',
+  'Backend Python',
   'Python y Flask',
   'Senior Python',
 ].filter(Boolean);
