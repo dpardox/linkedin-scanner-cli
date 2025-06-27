@@ -43,6 +43,7 @@ export const fluentEnglishKeywords = [
   'ingles conversacional mínimo B2',
   'both written and spoken English',
   'level of English is advanced C1',
+  'English is our working language',
   'C1+ / English Bilingual Skills',
   'High-level English proficiency',
   'Strong proficiency in English',

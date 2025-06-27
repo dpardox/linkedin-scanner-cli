@@ -25,6 +25,7 @@ export const strictExcludeKeywords = [
   'Postulación válida solamente para Chile y Perú',
   'this role remotely from any EU country',
   'Australian Citizen only',
+  'Solo Buenos Aires',
   'Europe-based',
 
   // companies
@@ -40,6 +41,7 @@ export const strictExcludeKeywords = [
   'Desarrollador Backend',
   'strong backend focus',
   'Back End Developer',
+  'Backend Developer',
   'Backend Engineer',
   'Backend Focused',
 
@@ -205,8 +207,12 @@ export const strictExcludeKeywords = [
   'Scrum Master',
 
   // junior
+  'Ingeniero de software júnior',
   'Junior Developer',
 
   // azure
   'Experience working with Azure environment',
+
+  //  jboss
+  'basados en JBOSS',
 ].filter(Boolean);
