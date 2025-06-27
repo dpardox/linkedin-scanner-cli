@@ -37,6 +37,7 @@ export const pythonKeywords = [
   'Python Specialist',
   'Python Developer',
   'Back-end Python',
+  'Python + Django',
   'Django, FastAPI',
   'Backend Python',
   'Python y Flask',

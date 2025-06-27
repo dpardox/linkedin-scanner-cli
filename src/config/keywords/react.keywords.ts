@@ -2,6 +2,7 @@ export const reactKeywords = [
   'Expertise in React and React Native for web and mobile development',
   'experiencia profesional en desarrollo Frontend con React',
   'experience developing Web applications using ReactJS',
+  'Strong working knowledge of React JS',
   'front-end development using React.js',
   'frontend development with React.js',
   'Capacidad para trabajar con React',
