@@ -8,6 +8,7 @@ export type JobSearchConfig = {
   restrictedLocations: string[];
   filters: Filters;
   keywords: Keywords;
+  languages?: string[];
 };
 
 export type ExpandedJobSearchConfig = Omit<JobSearchConfig, 'locations'> & {
