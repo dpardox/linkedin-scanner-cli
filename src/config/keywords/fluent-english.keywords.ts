@@ -70,6 +70,7 @@ export const fluentEnglishKeywords = [
   'Inglés indispensable',
   'English: C1 Advanced',
   'alto nivel de inglés',
+  'Nivel alto de inglés',
   'Inglés fluido B2 C1',
   'English: C1 Advance',
   'Fluency in English',

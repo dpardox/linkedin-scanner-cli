@@ -30,6 +30,8 @@ export const strictExcludeKeywords = [
 
   // companies
   'Jobot Consulting',
+  'EPAM',
+  'CI&T',
 
   // support
   'Software Engineer in Support',
