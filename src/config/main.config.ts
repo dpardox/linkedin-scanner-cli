@@ -1,1 +1,1 @@
-export { jobSearchConfigs } from 'config.scanner';
+export { jobSearchConfigs, contentSearchQuery, runUndetermined } from 'config.scanner';

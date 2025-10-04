@@ -3,6 +3,8 @@ import { Location } from '@enums/location.enum';
 import { WorkType } from '@enums/work-type.enum';
 import { JobSearchConfig } from '@shared/types/job-search-config.type';
 
+const defaultLanguages = ['eng', 'spa'];
+
 export const jobSearchConfigs: JobSearchConfig[] = [
   {
     /**
@@ -89,6 +91,12 @@ export const jobSearchConfigs: JobSearchConfig[] = [
        */
       strictExclude: [],
     },
+
+    /**
+     * ISO 639-3 language codes detected by franc.
+     * Example: ['eng', 'spa']
+     */
+    languages: [...defaultLanguages],
   },
   /**
    * You can define multiple job search configurations
@@ -97,3 +105,13 @@ export const jobSearchConfigs: JobSearchConfig[] = [
    * Each configuration will be executed independently.
    */
 ];
+
+/**
+ * Query used to populate the final LinkedIn posts search window.
+ */
+export const contentSearchQuery = '"desarrollador angular"';
+
+/**
+ * Enables the second pass that marks undetermined jobs.
+ */
+export const runUndetermined = false;

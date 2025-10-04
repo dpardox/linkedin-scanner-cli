@@ -1,4 +1,4 @@
-import { jobSearchConfigs } from '@config/main.config';
+import { contentSearchQuery, jobSearchConfigs, runUndetermined } from '@config/main.config';
 import { JobsSearchPage } from '@core/pages/jobs-search.page';
 import { matchWholeWord } from '@utils/match-whole-word.util';
 import { SearchResultsContentPage } from '@core/pages/searchResultsContent.page';
@@ -30,25 +30,47 @@ export class JobCheckerApp {
 
   public async run(): Promise<void> {
     try {
+      this.showUndetermined = false;
       await this.tryRun();
 
-      this.logger.br();
-      this.logger.success('Second run including UNDETERMINED jobs!');
-      this.logger.br();
+      if (runUndetermined) {
+        this.logger.br();
+        this.logger.success('Second run including UNDETERMINED jobs!');
+        this.logger.br();
 
-      this.showUndetermined = true;
-      await this.tryRun();
+        this.showUndetermined = true;
+        await this.tryRun();
+      }
+
+      this.logger.success('Execution finished!');
 
     } catch (error) {
+      let browserClosed = false;
+      try {
+        browserClosed = this.browser.isClosed();
+      } catch {
+        browserClosed = true;
+      }
+
+      if (browserClosed) {
+        this.logger.warn('Execution finished by user.');
+        process.exit(1);
+        return;
+      }
+
       this.logger.error('An error occurred during the job checking process...');
       console.error(error);
 
-      if (this.browser.isClosed()) process.exit(1);
+      try {
+        const page = await this.browser.lastPage();
+        this.notifier.notify();
+        await page.pause();
+        await this.browser.close();
+      } catch (cleanupError) {
+        this.logger.warn('Unable to complete cleanup after error.');
+        console.error(cleanupError);
+      }
 
-      const page = await this.browser.lastPage();
-      this.notifier.notify();
-      await page.pause();
-      await this.browser.close();
       process.exit(1);
     }
   }
@@ -67,7 +89,7 @@ export class JobCheckerApp {
 
     const searchResultsContentPage = new SearchResultsContentPage(await this.browser.firstPage(), this.logger);
     this.notifier.notify();
-    await searchResultsContentPage.open();
+    await searchResultsContentPage.open(contentSearchQuery);
     await searchResultsContentPage.waitForManualClose();
 
     await this.browser.close();
