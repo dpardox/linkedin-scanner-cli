@@ -40,6 +40,7 @@ export const dotnetKeywords = [
   'Strong background in C#',
   'Language fluency in C#',
   'Familiarity with .NET',
+  'Ingeniero Junior .NET',
   'Conocimiento en .NET',
   'experience with .NET',
   'strong focus on .NET',
