@@ -3,6 +3,7 @@ export const spainCitizenshipKeywords = [
   'Work must be performed exclusively from Spain',
   'Residir en España es un requisito Excluyente',
   'remote position for people located in Spain',
+  'Localización: Cualquier provincia de España',
   'Imprescindible estar ubicado en España',
   'SOLO CANDIDATOS QUE VIVEN EN ESPAÑA',
   'Residencia en España imprescindible',
@@ -13,6 +14,7 @@ export const spainCitizenshipKeywords = [
   'Remote from any EU countries',
   'you must reside in Spain',
   'Full remote within Spain',
+  'debe residir en Málaga',
   'Residir en Galicia',
   'SPAIN BASED',
 ].filter(Boolean);

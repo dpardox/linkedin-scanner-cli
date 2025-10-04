@@ -23,6 +23,7 @@ export const fluentEnglishKeywords = [
   'Complete fluency in the English language',
   'Inglés fluido tanto escrito como hablado',
   'English language both written and spoken',
+  'Inglés fluido (escrito y hablado) C1/C2',
   'Proficiency in English (B2 - C1 level)',
   'Bilingual Full Stack Software Engineer',
   'Fluency in written and spoken English',

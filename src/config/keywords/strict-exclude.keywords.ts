@@ -40,6 +40,7 @@ export const strictExcludeKeywords = [
   // backend
   'Full Stack Developer Backend Focus',
   'Senior Back-End Engineer',
+  'Developer Sr. Backend',
   'Desarrollador Backend',
   'strong backend focus',
   'Back End Developer',
