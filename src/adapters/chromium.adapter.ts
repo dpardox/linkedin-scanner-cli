@@ -1,6 +1,8 @@
 import { Browser, BrowserContext, chromium, Page, Cookie } from 'playwright';
 import { LoggerPort } from '@ports/logger.port';
 import { BrowserPort } from '@ports/browser.port';
+import { BrowserPagePort } from '@ports/browser-page.port';
+import { PlaywrightPageAdapter } from './playwright/playwright-page.adapter';
 
 import 'dotenv/config';
 
@@ -87,20 +89,29 @@ export class ChromiumAdapter implements BrowserPort {
     return !this.browser.isConnected() || this.browserContext.pages().length === 0;
   }
 
-  public async firstPage(): Promise<Page> {
-    let page = this.browserContext.pages().at(0);
-    page ||= await this.newPage();
-    return page;
+  public async firstPage(): Promise<BrowserPagePort> {
+    const first = this.browserContext.pages().at(0);
+    if (!first) {
+      return await this.newPage();
+    }
+    return this.wrapPage(first);
   }
 
-  public async lastPage(): Promise<Page> {
-    let page = this.browserContext.pages().at(-1);
-    page ||= await this.newPage();
-    return page;
+  public async lastPage(): Promise<BrowserPagePort> {
+    const last = this.browserContext.pages().at(-1);
+    if (!last) {
+      return await this.newPage();
+    }
+    return this.wrapPage(last);
   }
 
-  public async newPage(): Promise<Page> {
-    return await this.browserContext.newPage();
+  public async newPage(): Promise<BrowserPagePort> {
+    const page = await this.browserContext.newPage();
+    return this.wrapPage(page);
+  }
+
+  private wrapPage(page: Page): BrowserPagePort {
+    return new PlaywrightPageAdapter(page);
   }
 
 }

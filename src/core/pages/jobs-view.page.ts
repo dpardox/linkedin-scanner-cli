@@ -1,4 +1,4 @@
-import { type Page } from 'playwright';
+import { BrowserPagePort } from '@ports/browser-page.port';
 
 
 export class JobsViewPage {
@@ -6,7 +6,7 @@ export class JobsViewPage {
   static readonly url: string = 'https://www.linkedin.com/jobs/view';
 
   constructor(
-    private readonly page: Page,
+    private readonly page: BrowserPagePort,
   ) { }
 
 }

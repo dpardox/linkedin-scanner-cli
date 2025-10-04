@@ -1,4 +1,4 @@
-import { type Page } from 'playwright';
+import { BrowserPagePort } from '@ports/browser-page.port';
 
 
 export class FeedPage {
@@ -6,7 +6,7 @@ export class FeedPage {
   static readonly url: string = 'https://www.linkedin.com/feed';
 
   constructor(
-    private readonly page: Page,
+    private readonly page: BrowserPagePort,
   ) { }
 
 }

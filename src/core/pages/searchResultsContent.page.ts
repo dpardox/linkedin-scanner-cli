@@ -1,5 +1,5 @@
-import { type Page } from 'playwright';
 import { LoggerPort } from '@ports/logger.port';
+import { BrowserPagePort } from '@ports/browser-page.port';
 
 
 export class SearchResultsContentPage {
@@ -7,7 +7,7 @@ export class SearchResultsContentPage {
   static readonly url: string = 'https://www.linkedin.com/search/results/content';
 
   constructor(
-    private readonly page: Page,
+    private readonly page: BrowserPagePort,
     private readonly logger: LoggerPort,
   ) { }
 

@@ -1,4 +1,3 @@
-import { type Page } from 'playwright';
 import { Location } from '@enums/location.enum';
 import { Filters } from '@shared/types/filters.type';
 import { randms } from '@utils/randms.util';
@@ -7,6 +6,7 @@ import { BasePage } from './_base.page';
 import { LoggerPort } from '@ports/logger.port';
 import { normalize } from '@utils/normalize.util';
 import { JobModel } from '@models/job.model';
+import { BrowserPagePort } from '@ports/browser-page.port';
 
 
 export class JobsSearchPage extends BasePage {
@@ -15,7 +15,7 @@ export class JobsSearchPage extends BasePage {
 
 
   constructor(
-    page: Page,
+    page: BrowserPagePort,
     private readonly logger: LoggerPort,
   ) {
     super(page);
@@ -97,7 +97,7 @@ export class JobsSearchPage extends BasePage {
       id && ids.push(id);
     }
 
-    await this.page.evaluate((selector) => {
+    await this.page.evaluate((selector: string) => {
       const el = document.querySelector(selector);
       if (el) {
         el.scrollTop = 0;
