@@ -5,7 +5,7 @@ import { Job } from '@shared/types/job.type';
 
 export class JobDatasource extends JobRepository {
 
-  private readonly storage = new JSONStorageAdapter<Job, string>('jobs');
+  private readonly storage = new JSONStorageAdapter<Job, string>('jobs', { ttlDays: 30 });
 
   public async exists(id: string): Promise<boolean> {
     return this.storage.exists(id);

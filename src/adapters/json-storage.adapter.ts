@@ -2,13 +2,27 @@ import { StoragePort } from '@ports/storage.port';
 import fs from 'fs';
 import path from 'path';
 
+type JSONStorageAdapterOptions<T> = {
+  baseDir?: string;
+  ttlDays?: number;
+  resolveTimestamp?: (record: Partial<T>) => Date | string | null | undefined;
+  now?: () => Date;
+};
+
 export class JSONStorageAdapter<T extends { id: ID }, ID = string> implements StoragePort<T, ID> {
 
-  private readonly dir = path.resolve(process.cwd(), 'db');
+  private readonly dir: string;
   private readonly entity: string;
+  private readonly ttlMs?: number;
+  private readonly resolveTimestamp: (record: Partial<T>) => Date | string | null | undefined;
+  private readonly now: () => Date;
 
-  constructor(entity: string) {
+  constructor(entity: string, options: JSONStorageAdapterOptions<T> = {}) {
     this.entity = entity;
+    this.dir = this.resolveDirectory(options.baseDir);
+    this.ttlMs = this.resolveTtl(options.ttlDays);
+    this.resolveTimestamp = options.resolveTimestamp ?? this.defaultTimestampResolver;
+    this.now = options.now ?? (() => new Date());
     this.connect();
   }
 
@@ -24,6 +38,8 @@ export class JSONStorageAdapter<T extends { id: ID }, ID = string> implements St
     if (!fs.existsSync(this.path)) {
       fs.writeFileSync(this.path, JSON.stringify([]), 'utf-8');
     }
+
+    this.cleanExpiredRecords();
   }
 
   private read(): T[] {
@@ -94,6 +110,51 @@ export class JSONStorageAdapter<T extends { id: ID }, ID = string> implements St
     db.splice(index, 1);
     this.write(db);
     return record;
+  }
+
+  private cleanExpiredRecords(): void {
+    const ttlMs = this.ttlMs;
+    if (!ttlMs) return;
+
+    const db = this.read();
+    const now = this.currentTime();
+    const filtered = db.filter((record) => {
+      const timestamp = this.resolveRecordTimestamp(record);
+      if (timestamp === null) return true;
+      return now - timestamp <= ttlMs;
+    });
+
+    if (filtered.length !== db.length) {
+      this.write(filtered);
+    }
+  }
+
+  private resolveRecordTimestamp(record: Partial<T>): number | null {
+    const value = this.resolveTimestamp(record);
+    if (!value) return null;
+
+    const date = value instanceof Date ? value : new Date(value);
+    const time = date.getTime();
+    return Number.isNaN(time) ? null : time;
+  }
+
+  private resolveDirectory(baseDir?: string): string {
+    return baseDir ? path.resolve(baseDir) : path.resolve(process.cwd(), 'db');
+  }
+
+  private resolveTtl(ttlDays?: number): number | undefined {
+    if (!ttlDays) return undefined;
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+    return ttlDays * millisecondsPerDay;
+  }
+
+  private defaultTimestampResolver(record: Partial<T>): Date | string | null | undefined {
+    const candidate = (record as Record<string, unknown>)?.createdAt ?? (record as Record<string, unknown>)?.date;
+    return candidate as Date | string | null | undefined;
+  }
+
+  private currentTime(): number {
+    return this.now().getTime();
   }
 
 }

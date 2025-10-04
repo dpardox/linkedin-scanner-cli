@@ -1,11 +1,15 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { JSONStorageAdapter } from './json-storage.adapter';
 import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { Job } from '../shared/types/job.type';
+import { JobStatus } from '../shared/enums/job-status.enum';
 
 describe('StorageAdapter', () => {
 
   let storageAdapter: JSONStorageAdapter<Job, string>;
+  let tempDir: string;
 
   const job: Job = {
     id: '1',
@@ -14,16 +18,17 @@ describe('StorageAdapter', () => {
     description: 'Test Description',
     highSkillsMatch: false,
     isClosed: false,
-    status: 'new',
+    status: JobStatus.pending,
     createdAt: new Date(),
   };
 
   beforeAll(() => {
-    storageAdapter = new JSONStorageAdapter<Job, string>(`test-${Date.now()}`);
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'json-storage-'));
+    storageAdapter = new JSONStorageAdapter<Job, string>(`test-${Date.now()}`, { baseDir: tempDir });
   });
 
   afterAll(() => {
-    fs.rmSync(storageAdapter.path);
+    fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
   test('should be a db file', () => {
@@ -97,6 +102,54 @@ describe('StorageAdapter', () => {
     expect(() => {
       storageAdapter.delete('non-existing-id');
     }).toThrow(`Record with ID non-existing-id does not exist.`);
+  });
+
+  test('Should clean records older than configured TTL during initialization', () => {
+    const entity = `cleanup-${Date.now()}`;
+    const filePath = path.join(tempDir, `${entity}.db.json`);
+    const now = new Date('2024-02-01T00:00:00.000Z');
+    const staleRecord: Job = {
+      ...job,
+      id: 'stale',
+      createdAt: new Date(now.getTime() - 40 * 24 * 60 * 60 * 1000),
+    };
+    const recentRecord: Job = {
+      ...job,
+      id: 'fresh',
+      createdAt: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000),
+    };
+
+    fs.writeFileSync(filePath, JSON.stringify([staleRecord, recentRecord], null, 2));
+
+    const cleanupAdapter = new JSONStorageAdapter<Job, string>(entity, {
+      baseDir: tempDir,
+      ttlDays: 30,
+      now: () => now,
+    });
+
+    const data = JSON.parse(fs.readFileSync(cleanupAdapter.path, 'utf-8')) as Job[];
+    expect(data).toHaveLength(1);
+    expect(data[0]?.id).toBe(recentRecord.id);
+    expect(cleanupAdapter.findById(staleRecord.id)).toBeNull();
+  });
+
+  test('Should ignore TTL cleanup when record timestamp is missing', () => {
+    type MinimalRecord = { id: string; value: string };
+
+    const entity = `cleanup-missing-${Date.now()}`;
+    const filePath = path.join(tempDir, `${entity}.db.json`);
+    const record: MinimalRecord = { id: 'no-date', value: 'test' };
+
+    fs.writeFileSync(filePath, JSON.stringify([record], null, 2));
+
+    const cleanupAdapter = new JSONStorageAdapter<MinimalRecord, string>(entity, {
+      baseDir: tempDir,
+      ttlDays: 30,
+    });
+
+    const data = JSON.parse(fs.readFileSync(cleanupAdapter.path, 'utf-8')) as MinimalRecord[];
+    expect(data).toHaveLength(1);
+    expect(cleanupAdapter.findById(record.id)?.id).toBe(record.id);
   });
 
 });
