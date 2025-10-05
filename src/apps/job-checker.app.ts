@@ -8,14 +8,12 @@ import { JobStatus } from '@enums/job-status.enum';
 import { normalize } from '@utils/normalize.util';
 import { ExpandedJobSearchConfig, JobSearchConfig } from '@shared/types/job-search-config.type';
 import { JobModel } from '@models/job.model';
-import { JobDatasource } from '@infrastructure/datasource/job.datasource';
 import { BrowserPort } from '@ports/browser.port';
 import { LangDetectorPort } from '@ports/lang-detector.port';
+import { JobRepository } from '@repository/job.repository';
 
 
 export class JobCheckerApp {
-
-  private readonly jobDatasource = new JobDatasource();
 
   private jobsSearchPage!: JobsSearchPage;
 
@@ -26,6 +24,7 @@ export class JobCheckerApp {
     private readonly notifier: NotifierPort,
     private readonly browser: BrowserPort,
     private readonly langDetector: LangDetectorPort,
+    private readonly jobRepository: JobRepository,
   ) { }
 
   public async run(): Promise<void> {
@@ -137,7 +136,7 @@ export class JobCheckerApp {
     const ids: string[] = [];
 
     for (const jobId of jobIds) {
-      const job = await this.jobDatasource.findById(jobId);
+      const job = await this.jobRepository.findById(jobId);
       if (job && !statuses.includes(job.status)) {
         this.logger.br();
         this.logger.warn('Job "%s" already processed!', jobId);
@@ -168,7 +167,7 @@ export class JobCheckerApp {
   private async getJobDetails(jobId: string): Promise<JobModel> {
     await this.jobsSearchPage.selectJob(jobId);
     const jobModel = await this.jobsSearchPage.getJobDetails(jobId);
-    return await this.jobDatasource.upsert(jobId, jobModel);
+    return await this.jobRepository.upsert(jobId, jobModel);
   }
 
   private async isDissmissedJob(jobId: string): Promise<boolean> {
@@ -306,7 +305,7 @@ export class JobCheckerApp {
   }
 
   private async updateJobStatus(jobId: string, status: JobStatus): Promise<void> {
-    await this.jobDatasource.update(jobId, { status });
+    await this.jobRepository.update(jobId, { status });
   }
 
   private findMatchingKeywords(content: string, keywords: string[] = []): string[] {
