@@ -39,6 +39,7 @@ export const strictExcludeKeywords = [
 
   // backend
   'Full Stack Developer Backend Focus',
+  'Experiencia sólida en Symfony',
   'Senior Back-End Engineer',
   'Developer Sr. Backend',
   'Desarrollador Backend',

@@ -6,6 +6,7 @@ export const spainCitizenshipKeywords = [
   'Localización: Cualquier provincia de España',
   'Imprescindible estar ubicado en España',
   'SOLO CANDIDATOS QUE VIVEN EN ESPAÑA',
+  'imprescindible residencia en Madrid',
   'Residencia en España imprescindible',
   'debe estar residiendo en Cataluña',
   'residir en MADRID o alrededores',
@@ -17,4 +18,5 @@ export const spainCitizenshipKeywords = [
   'debe residir en Málaga',
   'Residir en Galicia',
   'SPAIN BASED',
+  'solo España',
 ].filter(Boolean);

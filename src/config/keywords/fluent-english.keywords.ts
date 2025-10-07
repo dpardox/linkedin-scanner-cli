@@ -68,6 +68,7 @@ export const fluentEnglishKeywords = [
   'Conversational English',
   'English - Fully fluent',
   'Inglés conversacional',
+  'Developer con Inglés',
   'Inglés indispensable',
   'English: C1 Advanced',
   'alto nivel de inglés',
