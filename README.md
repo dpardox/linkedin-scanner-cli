@@ -6,6 +6,14 @@ This project follows a **"presume fitness"** strategy when evaluating job offers
 
 ## Getting Started
 
+### Environment file
+
+Copy the example environment file and rename it to `.env`:
+
+```bash
+cp .env.example .env
+```
+
 ### Authentication via Cookie
 
 To avoid automating the login process, this project uses the `li_at` session cookie from LinkedIn.
