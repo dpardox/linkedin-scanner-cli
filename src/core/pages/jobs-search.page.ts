@@ -7,38 +7,13 @@ import { LoggerPort } from '@ports/logger.port';
 import { normalize } from '@utils/normalize.util';
 import { JobModel } from '@models/job.model';
 import { BrowserPagePort } from '@ports/browser-page.port';
-
-type JobDetailsSelectors = {
-  title: string[];
-  location: string[];
-  description: string[];
-};
-
-type JobDetailsSnapshot = {
-  url: string;
-  title: string;
-  location: string;
-  description: string;
-};
-
-const jobDetailsSelectors: JobDetailsSelectors = {
-  title: [
-    '.job-details-jobs-unified-top-card__job-title',
-    '.jobs-unified-top-card__job-title',
-    'main h1',
-  ],
-  location: [
-    '.job-details-jobs-unified-top-card__tertiary-description-container .tvm__text',
-    '.job-details-jobs-unified-top-card__tertiary-description-container',
-    '.job-details-jobs-unified-top-card__primary-description-container',
-    '.jobs-unified-top-card__primary-description',
-  ],
-  description: [
-    '.jobs-description__container .jobs-box__html-content',
-    '.jobs-description-content__text',
-    '.jobs-box__html-content',
-  ],
-};
+import { JobDetailsExtractionError } from './job-details-extraction.error';
+import {
+  jobDetailsFieldSelectors,
+  JobDetailsFieldName,
+  JobDetailsFieldSnapshot,
+  JobDetailsSnapshot,
+} from './job-details.selectors';
 
 
 export class JobsSearchPage extends BasePage {
@@ -159,7 +134,7 @@ export class JobsSearchPage extends BasePage {
       return false;
     }
 
-    let currentPage = await el.evaluate((el: HTMLElement) => el.getAttribute('data-test-pagination-page-btn'));
+    const currentPage = await el.getAttribute('data-test-pagination-page-btn');
 
     if (!currentPage) {
       this.logger.error('No pagination found.');
@@ -180,7 +155,8 @@ export class JobsSearchPage extends BasePage {
 
   private async getJobTitle(jobId: string): Promise<string | null> {
     const selector = `.job-card-container[data-job-id="${jobId}"] .artdeco-entity-lockup__title strong`;
-    return await this.page.$eval(selector, (el) => el.textContent);
+    const text = await this.readTextBySelector(selector);
+    return text || null;
   }
 
   public async isDissmissedJob(job: string): Promise<boolean> {
@@ -199,11 +175,7 @@ export class JobsSearchPage extends BasePage {
   public async isAppliedJob(job: string): Promise<boolean> {
     await this.page.waitForTimeout(randms());
     const selector = `.job-card-container[data-job-id="${job}"] .job-card-container__footer-job-state`;
-    let el = await this.page.$(selector);
-
-    if (!el) return false;
-
-    const text = await el.evaluate(el => el.textContent ?? '');
+    const text = await this.readTextBySelector(selector);
     const applied = normalize(text);
 
     return applied?.includes('applied');
@@ -212,8 +184,7 @@ export class JobsSearchPage extends BasePage {
   public async isEmptyJob(job: string): Promise<boolean> {
     await this.page.waitForTimeout(randms());
     const selector = `.scaffold-layout__list-item[data-occludable-job-id="${job}"]`;
-    let text = await this.page.$eval(selector, (el) => el.textContent);
-    text &&= normalize(text);
+    const text = normalize(await this.readTextBySelector(selector));
 
     if (!text) {
       this.logger.error('Empty job listing found.');
@@ -276,9 +247,9 @@ export class JobsSearchPage extends BasePage {
 
     const jobModel = new JobModel();
     jobModel.id = jobId;
-    jobModel.title = details.title;
-    jobModel.location = details.location;
-    jobModel.description = details.description;
+    jobModel.title = details.fields.title.value;
+    jobModel.location = details.fields.location.value;
+    jobModel.description = details.fields.description.value;
     jobModel.highSkillsMatch = await this.page.getByText('High skills match', { exact: true }).isVisible().catch(() => false);
     jobModel.isClosed = await this.page.getByText('No longer accepting applications', { exact: true }).isVisible().catch(() => false);
 
@@ -367,7 +338,7 @@ export class JobsSearchPage extends BasePage {
     let snapshot = await this.readJobDetails();
 
     while (Date.now() - startedAt < timeout) {
-      if (snapshot.title && snapshot.description) {
+      if (this.hasRequiredJobDetails(snapshot)) {
         return snapshot;
       }
 
@@ -375,31 +346,69 @@ export class JobsSearchPage extends BasePage {
       snapshot = await this.readJobDetails();
     }
 
-    throw new Error(`Timed out retrieving job details for "${jobId}" at ${snapshot.url}`);
+    throw new JobDetailsExtractionError(jobId, snapshot, jobDetailsFieldSelectors);
   }
 
   private async readJobDetails(): Promise<JobDetailsSnapshot> {
-    return await this.page.evaluate((selectors: JobDetailsSelectors) => {
-      const readFirstText = (candidates: string[]): string => {
-        for (const candidate of candidates) {
-          const element = document.querySelector<HTMLElement>(candidate);
-          const text = element?.innerText?.trim();
+    const [title, location, description] = await Promise.all([
+      this.readJobDetailField('title'),
+      this.readJobDetailField('location'),
+      this.readJobDetailField('description'),
+    ]);
 
-          if (text) {
-            return text;
-          }
-        }
+    return {
+      url: this.page.url(),
+      fields: {
+        title,
+        location,
+        description,
+      },
+    };
+  }
 
-        return '';
-      };
+  private hasRequiredJobDetails(snapshot: JobDetailsSnapshot): boolean {
+    const fields = Object.keys(jobDetailsFieldSelectors) as JobDetailsFieldName[];
+    return fields.every((field) => {
+      const { required } = jobDetailsFieldSelectors[field];
+      return !required || !!snapshot.fields[field].value;
+    });
+  }
 
-      return {
-        url: window.location.href,
-        title: readFirstText(selectors.title),
-        location: readFirstText(selectors.location),
-        description: readFirstText(selectors.description),
-      };
-    }, jobDetailsSelectors);
+  private async readJobDetailField(field: JobDetailsFieldName): Promise<JobDetailsFieldSnapshot> {
+    const { selectors } = jobDetailsFieldSelectors[field];
+    return await this.readFirstAvailableText(selectors);
+  }
+
+  private async readFirstAvailableText(selectors: string[]): Promise<JobDetailsFieldSnapshot> {
+    for (const selector of selectors) {
+      const value = await this.readTextBySelector(selector);
+
+      if (value) {
+        return {
+          value,
+          selector,
+        };
+      }
+    }
+
+    return {
+      value: '',
+      selector: null,
+    };
+  }
+
+  private async readTextBySelector(selector: string): Promise<string> {
+    const element = await this.page.$(selector);
+
+    if (!element) {
+      return '';
+    }
+
+    try {
+      return (await element.innerText()).trim();
+    } catch {
+      return '';
+    }
   }
 
 }

@@ -12,6 +12,7 @@ import { JobModel } from '@models/job.model';
 import { BrowserPort } from '@ports/browser.port';
 import { LangDetectorPort } from '@ports/lang-detector.port';
 import { JobRepository } from '@repository/job.repository';
+import { JobDetailsExtractionError } from '@core/pages/job-details-extraction.error';
 
 
 export class JobCheckerApp {
@@ -59,7 +60,11 @@ export class JobCheckerApp {
         return;
       }
 
-      this.logger.error('An error occurred during the job checking process...');
+      if (error instanceof JobDetailsExtractionError) {
+        this.logger.error('Job details extraction stopped on job "%s". Review selectors in the paused browser.', error.jobId);
+      } else {
+        this.logger.error('An error occurred during the job checking process...');
+      }
       console.error(error);
 
       try {
@@ -124,6 +129,10 @@ export class JobCheckerApp {
           await this.jobsSearchPage.markJobAsCurrent(jobId);
           await this.checkJob(jobId, config);
         } catch (error) {
+          if (error instanceof JobDetailsExtractionError) {
+            throw error;
+          }
+
           const message = error instanceof Error ? error.message : String(error);
           this.logger.error('Unable to process job "%s": %s', jobId, message);
           if (!this.loginPage.isAuthenticated()) {

@@ -23,6 +23,10 @@ export class PlaywrightElementAdapter implements BrowserElementPort {
     return await this.element.getAttribute(name);
   }
 
+  public async innerText(): Promise<string> {
+    return await this.element.innerText();
+  }
+
   public async click(options?: BrowserClickOptions): Promise<void> {
     await this.element.click(options);
   }
