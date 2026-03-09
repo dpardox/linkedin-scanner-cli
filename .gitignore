@@ -3,5 +3,4 @@ coverage/
 db/
 logs/
 node_modules/
-.env
 config.scanner.ts

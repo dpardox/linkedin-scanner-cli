@@ -6,14 +6,6 @@ This project follows a **"presume fitness"** strategy when evaluating job offers
 
 ## Getting Started
 
-### Environment file
-
-Copy the example environment file and rename it to `.env`:
-
-```bash
-cp .env.example .env
-```
-
 ### Authentication
 
 Recommended approach: run the browser in visible mode, log in manually once, and let the app save the Playwright session state.
@@ -27,30 +19,9 @@ On the first run:
 
 On later runs, that saved session state will be reused automatically.
 
-### Optional Cookie Fallback
+The session state is stored at `.auth/linkedin-storage-state.json`.
 
-To avoid automating the login process, this project uses the `li_at` session cookie from LinkedIn.
-
-1. Open LinkedIn in your browser (Chrome, Safari, or Firefox) and log in.
-2. Open Developer Tools (right-click → "Inspect" or press `F12`) and go to the **Application** tab.
-3. In the left menu, under **Storage**, select **Cookies** → `https://www.linkedin.com`.
-4. Locate the cookie named `li_at`, and copy its value.
-5. Open the `.env` file at the root of this project.
-6. Add the following line:
-
-```
-LINKEDIN_COOKIE="your_li_at_cookie_value_here"
-```
-
-Optionally, you can also configure where the saved Playwright session state will be stored:
-
-```
-LINKEDIN_STORAGE_STATE_PATH=".auth/linkedin-storage-state.json"
-```
-
-7. Save the file. Now your scanner will authenticate using this cookie automatically.
-
-⚠️ Note: The cookie fallback is less stable than a saved session state. If LinkedIn closes the session, delete the saved state file, run `npm start`, and log in manually again.
+If LinkedIn closes the session, delete that file, run `npm start`, and log in manually again.
 
 ### Configuration
 

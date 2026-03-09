@@ -1,9 +1,7 @@
 import { FeedPage } from './feed.page';
 import { randms } from '@utils/randms.util';
 import { LoggerPort } from '@ports/logger.port';
-import 'dotenv/config';
 import { BrowserPagePort } from '@ports/browser-page.port';
-
 
 export class LoginPage {
 

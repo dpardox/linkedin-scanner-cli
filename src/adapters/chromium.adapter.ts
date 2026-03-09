@@ -1,12 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { Browser, BrowserContext, BrowserContextOptions, chromium, Page, Cookie } from 'playwright';
+import { Browser, BrowserContext, BrowserContextOptions, chromium, Page } from 'playwright';
+import { LinkedInStorageStatePath } from '@enums/linkedin-storage-state-path.enum';
 import { LoggerPort } from '@ports/logger.port';
 import { BrowserPort } from '@ports/browser.port';
 import { BrowserPagePort } from '@ports/browser-page.port';
 import { PlaywrightPageAdapter } from './playwright/playwright-page.adapter';
-
-import 'dotenv/config';
 
 export class ChromiumAdapter implements BrowserPort {
 
@@ -45,14 +44,7 @@ export class ChromiumAdapter implements BrowserPort {
     if (this.hasStoredSessionState()) {
       this.logger.info('Loaded LinkedIn session state.');
     } else {
-      const cookie = this.buildLinkedInCookie();
-
-      if (cookie) {
-        this.logger.info('Adding LinkedIn Cookie...');
-        await this.addCookie(context, cookie);
-      } else {
-        this.logger.warn('No LinkedIn session state or cookie found. Manual login will be required.');
-      }
+      this.logger.warn('No LinkedIn session state found. Manual login will be required.');
     }
 
     this.logger.success('Browser ready to use!');
@@ -80,27 +72,6 @@ export class ChromiumAdapter implements BrowserPort {
     }
 
     return options;
-  }
-
-  private buildLinkedInCookie(): Cookie | null {
-    const value = process.env.LINKEDIN_COOKIE?.trim();
-
-    if (!value) return null;
-
-    return {
-      name: 'li_at',
-      value,
-      domain: '.linkedin.com',
-      path: '/',
-      httpOnly: true,
-      secure: true,
-      sameSite: 'Lax',
-      expires: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7,
-    };
-  }
-
-  private async addCookie(context: BrowserContext, cookie: Cookie): Promise<void> {
-    await context.addCookies([cookie]);
   }
 
   public async saveSessionState(): Promise<void> {
@@ -150,10 +121,7 @@ export class ChromiumAdapter implements BrowserPort {
   }
 
   private get storageStatePath(): string {
-    const configured = process.env.LINKEDIN_STORAGE_STATE_PATH?.trim();
-    return configured
-      ? path.resolve(process.cwd(), configured)
-      : path.resolve(process.cwd(), '.auth/linkedin-storage-state.json');
+    return path.resolve(process.cwd(), LinkedInStorageStatePath.file);
   }
 
   private hasStoredSessionState(): boolean {

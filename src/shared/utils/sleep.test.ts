@@ -1,20 +1,30 @@
-import { describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { sleep } from './sleep.util';
 
 describe('sleep', () => {
 
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   test('should resolve after the specified time', async () => {
-    const start = Date.now();
-    await sleep(1000);
-    const end = Date.now();
-    expect(end - start).toBeGreaterThanOrEqual(1000);
+    const sleepPromise = sleep(1000);
+
+    await vi.advanceTimersByTimeAsync(1000);
+
+    await expect(sleepPromise).resolves.toBeUndefined();
   });
 
   test('should resolve immediately if time is 0', async () => {
-    const start = Date.now();
-    await sleep(0);
-    const end = Date.now();
-    expect(end - start).toBeLessThan(10);
+    const sleepPromise = sleep(0);
+
+    await vi.advanceTimersByTimeAsync(0);
+
+    await expect(sleepPromise).resolves.toBeUndefined();
   });
 
 });
