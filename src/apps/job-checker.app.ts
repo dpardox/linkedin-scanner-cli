@@ -1,5 +1,6 @@
 import { contentSearchQuery, jobSearchConfigs, runUndetermined } from '@config/main.config';
 import { JobsSearchPage } from '@core/pages/jobs-search.page';
+import { LoginPage } from '@core/pages/login.page';
 import { matchWholeWord } from '@utils/match-whole-word.util';
 import { SearchResultsContentPage } from '@core/pages/searchResultsContent.page';
 import { NotifierPort } from '@ports/notifier.port';
@@ -16,6 +17,7 @@ import { JobRepository } from '@repository/job.repository';
 export class JobCheckerApp {
 
   private jobsSearchPage!: JobsSearchPage;
+  private loginPage!: LoginPage;
 
   private showUndetermined: boolean = false;
 
@@ -77,7 +79,10 @@ export class JobCheckerApp {
   public async tryRun(): Promise<void> {
     await this.browser.launch({ headless: false });
 
-    this.jobsSearchPage = new JobsSearchPage(await this.browser.firstPage(), this.logger);
+    const firstPage = await this.browser.firstPage();
+    this.loginPage = new LoginPage(firstPage, this.logger);
+    await this.ensureAuthenticated();
+    this.jobsSearchPage = new JobsSearchPage(firstPage, this.logger);
 
     const expandedConfigs = this.expandConfigs(jobSearchConfigs);
 
@@ -115,9 +120,19 @@ export class JobCheckerApp {
 
       for (const jobId of jobIds) {
         this.logger.br();
-        await this.jobsSearchPage.markJobAsCurrent(jobId);
-        await this.checkJob(jobId, config);
-        await this.jobsSearchPage.markJobAsSeen(jobId);
+        try {
+          await this.jobsSearchPage.markJobAsCurrent(jobId);
+          await this.checkJob(jobId, config);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          this.logger.error('Unable to process job "%s": %s', jobId, message);
+          if (!this.loginPage.isAuthenticated()) {
+            await this.ensureAuthenticated();
+          }
+          await this.jobsSearchPage.recoverSearchResults();
+        } finally {
+          await this.jobsSearchPage.markJobAsSeen(jobId);
+        }
 
       }
     } while (await this.jobsSearchPage.nextPage());
@@ -125,6 +140,13 @@ export class JobCheckerApp {
 
   private async noJobsFound(): Promise<boolean> {
     return await this.jobsSearchPage.noJobsFound();
+  }
+
+  private async ensureAuthenticated(): Promise<void> {
+    await this.loginPage.ensureAuthenticated(async () => {
+      await this.browser.clearCookies();
+    });
+    await this.browser.saveSessionState();
   }
 
   private async getJobIds(): Promise<string[]> {

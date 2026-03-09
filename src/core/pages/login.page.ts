@@ -21,13 +21,51 @@ export class LoginPage {
     await this.page.waitForTimeout(randms());
   }
 
-  public isAuthenticated(): boolean {
-    if (this.page.url().startsWith(FeedPage.url)) {
-      this.logger.success('Session detected.');
-      return true;
+  public async ensureAuthenticated(resetSession?: () => Promise<void>): Promise<void> {
+    this.logger.info('Checking LinkedIn session...');
+
+    try {
+      await this.page.goto(FeedPage.url, { waitUntil: 'domcontentloaded' });
+      await this.page.waitForTimeout(randms());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn('Stored LinkedIn session looks invalid: %s', message);
     }
 
-    return false;
+    if (this.isAuthenticated()) {
+      this.logger.success('Session detected.');
+      return;
+    }
+
+    if (resetSession) {
+      await resetSession();
+    }
+
+    this.logger.warn('LinkedIn session not detected. Complete the login manually in the browser window...');
+    await this.open();
+    await this.waitForAuthentication();
+    this.logger.success('Session detected.');
+  }
+
+  public isAuthenticated(): boolean {
+    const url = this.page.url();
+    if (!url.startsWith('https://www.linkedin.com/')) return false;
+    if (url.startsWith(LoginPage.url)) return false;
+    if (url.includes('/checkpoint/')) return false;
+    if (url.includes('/uas/login')) return false;
+    return true;
+  }
+
+  private async waitForAuthentication(timeoutMs = 5 * 60 * 1000): Promise<void> {
+    const startedAt = Date.now();
+
+    while (!this.isAuthenticated()) {
+      if (Date.now() - startedAt > timeoutMs) {
+        throw new Error('Timed out waiting for LinkedIn login.');
+      }
+
+      await this.page.waitForTimeout(1000);
+    }
   }
 
 }

@@ -14,7 +14,20 @@ Copy the example environment file and rename it to `.env`:
 cp .env.example .env
 ```
 
-### Authentication via Cookie
+### Authentication
+
+Recommended approach: run the browser in visible mode, log in manually once, and let the app save the Playwright session state.
+
+On the first run:
+
+1. Start the scanner with `npm start`.
+2. If no valid session is found, the browser will open LinkedIn login.
+3. Complete the login manually in the browser window.
+4. Once the session is detected, the app will save it to `.auth/linkedin-storage-state.json`.
+
+On later runs, that saved session state will be reused automatically.
+
+### Optional Cookie Fallback
 
 To avoid automating the login process, this project uses the `li_at` session cookie from LinkedIn.
 
@@ -29,9 +42,15 @@ To avoid automating the login process, this project uses the `li_at` session coo
 LINKEDIN_COOKIE="your_li_at_cookie_value_here"
 ```
 
+Optionally, you can also configure where the saved Playwright session state will be stored:
+
+```
+LINKEDIN_STORAGE_STATE_PATH=".auth/linkedin-storage-state.json"
+```
+
 7. Save the file. Now your scanner will authenticate using this cookie automatically.
 
-⚠️ Note: The `li_at` cookie typically expires after about 2 weeks. If LinkedIn redirects you to the login page again, you may need to repeat this process.
+⚠️ Note: The cookie fallback is less stable than a saved session state. If LinkedIn closes the session, delete the saved state file, run `npm start`, and log in manually again.
 
 ### Configuration
 

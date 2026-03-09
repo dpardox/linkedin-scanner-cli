@@ -56,6 +56,10 @@ export class PlaywrightPageAdapter implements BrowserPagePort {
     return new PlaywrightLocatorAdapter(this.page.getByText(text, options as any));
   }
 
+  public async title(): Promise<string> {
+    return await this.page.title();
+  }
+
   public url(): string {
     return this.page.url();
   }

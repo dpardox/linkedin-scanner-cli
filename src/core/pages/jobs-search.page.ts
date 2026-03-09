@@ -8,10 +8,44 @@ import { normalize } from '@utils/normalize.util';
 import { JobModel } from '@models/job.model';
 import { BrowserPagePort } from '@ports/browser-page.port';
 
+type JobDetailsSelectors = {
+  title: string[];
+  location: string[];
+  description: string[];
+};
+
+type JobDetailsSnapshot = {
+  url: string;
+  title: string;
+  location: string;
+  description: string;
+};
+
+const jobDetailsSelectors: JobDetailsSelectors = {
+  title: [
+    '.job-details-jobs-unified-top-card__job-title',
+    '.jobs-unified-top-card__job-title',
+    'main h1',
+  ],
+  location: [
+    '.job-details-jobs-unified-top-card__tertiary-description-container .tvm__text',
+    '.job-details-jobs-unified-top-card__tertiary-description-container',
+    '.job-details-jobs-unified-top-card__primary-description-container',
+    '.jobs-unified-top-card__primary-description',
+  ],
+  description: [
+    '.jobs-description__container .jobs-box__html-content',
+    '.jobs-description-content__text',
+    '.jobs-box__html-content',
+  ],
+};
+
 
 export class JobsSearchPage extends BasePage {
 
   static readonly url: string = 'https://www.linkedin.com/jobs/search';
+
+  private currentSearchUrl: string | null = null;
 
 
   constructor(
@@ -47,6 +81,8 @@ export class JobsSearchPage extends BasePage {
     if (!this.page.url().startsWith(JobsSearchPage.url)) {
       throw new Error('Failed to open jobs search page.');
     }
+
+    this.rememberCurrentSearchUrl();
   }
 
   public async noJobsFound(): Promise<boolean> {
@@ -64,6 +100,7 @@ export class JobsSearchPage extends BasePage {
 
   public async getJobIds(): Promise<string[]> {
     this.logger.info('Retrieving job listings...');
+    this.rememberCurrentSearchUrl();
 
     const layout = '.scaffold-layout__list';
     const scroll = `${layout} > div`;
@@ -104,6 +141,7 @@ export class JobsSearchPage extends BasePage {
       }
     }, scroll);
 
+    this.rememberCurrentSearchUrl();
     this.logger.info(`Found %s job(s).`, ids.length);
     return ids;
   }
@@ -232,24 +270,15 @@ export class JobsSearchPage extends BasePage {
     this.logger.info('Retrieving job details...');
 
     await this.page.waitForTimeout(randms());
-
-    const selector = {
-      title: '.job-details-jobs-unified-top-card__job-title',
-      location: '.job-details-jobs-unified-top-card__tertiary-description-container .tvm__text',
-      description: '.jobs-description__container .jobs-box__html-content div',
-    };
-
-    await this.page.waitForSelector(selector.title, { state: 'attached' });
-    await this.page.waitForSelector(selector.location, { state: 'attached' });
-    await this.page.waitForSelector(selector.description, { state: 'attached' });
+    const details = await this.loadJobDetails(jobId);
 
     await this.page.waitForTimeout(randms());
 
     const jobModel = new JobModel();
     jobModel.id = jobId;
-    jobModel.title = await this.innerText(selector.title);
-    jobModel.location = await this.innerText(selector.location);
-    jobModel.description = await this.innerText(selector.description);
+    jobModel.title = details.title;
+    jobModel.location = details.location;
+    jobModel.description = details.description;
     jobModel.highSkillsMatch = await this.page.getByText('High skills match', { exact: true }).isVisible().catch(() => false);
     jobModel.isClosed = await this.page.getByText('No longer accepting applications', { exact: true }).isVisible().catch(() => false);
 
@@ -292,9 +321,85 @@ export class JobsSearchPage extends BasePage {
 
   public async setBackgroundColor(job: string, color: string) {
     const selector = `.job-card-container[data-job-id="${job}"]`;
+    const element = await this.page.$(selector);
+
+    if (!element) return;
+
     await this.page.$eval(selector, (el: HTMLElement, color) => {
       el.setAttribute('style', `background-color: ${color};`);
     }, color);
+  }
+
+  public async recoverSearchResults(): Promise<void> {
+    if (!this.currentSearchUrl) {
+      throw new Error('Search URL not available for recovery.');
+    }
+
+    this.logger.warn('Recovering jobs search page...');
+    await this.page.goto(this.currentSearchUrl, { waitUntil: 'domcontentloaded' });
+    await this.page.waitForTimeout(randms());
+    this.rememberCurrentSearchUrl();
+  }
+
+  private rememberCurrentSearchUrl(): void {
+    const currentUrl = this.page.url();
+    if (currentUrl.startsWith(JobsSearchPage.url)) {
+      this.currentSearchUrl = currentUrl;
+    }
+  }
+
+  private async loadJobDetails(jobId: string): Promise<JobDetailsSnapshot> {
+    try {
+      return await this.waitForJobDetails(jobId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn('Retrying job "%s" details after refresh: %s', jobId, message);
+      await this.recoverSearchResults();
+      await this.selectJob(jobId);
+      return await this.waitForJobDetails(jobId);
+    }
+  }
+
+  private async waitForJobDetails(jobId: string): Promise<JobDetailsSnapshot> {
+    const timeout = 30_000;
+    const interval = 500;
+    const startedAt = Date.now();
+    let snapshot = await this.readJobDetails();
+
+    while (Date.now() - startedAt < timeout) {
+      if (snapshot.title && snapshot.description) {
+        return snapshot;
+      }
+
+      await this.page.waitForTimeout(interval);
+      snapshot = await this.readJobDetails();
+    }
+
+    throw new Error(`Timed out retrieving job details for "${jobId}" at ${snapshot.url}`);
+  }
+
+  private async readJobDetails(): Promise<JobDetailsSnapshot> {
+    return await this.page.evaluate((selectors: JobDetailsSelectors) => {
+      const readFirstText = (candidates: string[]): string => {
+        for (const candidate of candidates) {
+          const element = document.querySelector<HTMLElement>(candidate);
+          const text = element?.innerText?.trim();
+
+          if (text) {
+            return text;
+          }
+        }
+
+        return '';
+      };
+
+      return {
+        url: window.location.href,
+        title: readFirstText(selectors.title),
+        location: readFirstText(selectors.location),
+        description: readFirstText(selectors.description),
+      };
+    }, jobDetailsSelectors);
   }
 
 }

@@ -33,6 +33,7 @@ export interface BrowserPagePort {
   $$(selector: string): Promise<BrowserElementPort[]>;
   getByRole(role: string, options?: BrowserGetByRoleOptions): BrowserLocatorPort;
   getByText(text: string, options?: BrowserGetByTextOptions): BrowserLocatorPort;
+  title(): Promise<string>;
   url(): string;
   once(event: 'close', handler: () => void): void;
   pause(): Promise<void>;
