@@ -147,6 +147,7 @@ export const strictExcludeKeywords = [
   // c++
   'C++ development skills',
   'experienced C++',
+  'Desarrollador C#',
 
   // genexus
   'Desarrollador Genexus',

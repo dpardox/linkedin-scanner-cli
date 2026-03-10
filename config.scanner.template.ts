@@ -71,10 +71,6 @@ export const jobSearchConfigs: JobSearchConfig[] = [
        */
       strictInclude: ['angular'],
 
-      /** Not implemented yet */
-      include: [],
-      exclude: [],
-
       /**
        * Forbidden keywords — if any of these are found in the job description,
        * the job will be discarded.

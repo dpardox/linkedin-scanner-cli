@@ -35,8 +35,6 @@ describe('JobCheckerApp', () => {
         },
         keywords: {
           strictInclude: [],
-          include: [],
-          exclude: [],
           strictExclude: [],
         },
         languages: [ 'spa' ],
@@ -77,8 +75,6 @@ describe('JobCheckerApp', () => {
         },
         keywords: {
           strictInclude: [],
-          include: [],
-          exclude: [],
           strictExclude: [],
         },
         languages: [ 'spa' ],
