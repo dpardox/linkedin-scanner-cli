@@ -38,6 +38,7 @@ export const strictExcludeKeywords = [
   'Customer Support Technician',
 
   // backend
+  'años de experiencia con Symfony / PHP',
   'Full Stack Developer Backend Focus',
   'Experiencia sólida en Symfony',
   'Senior Back-End Engineer',
