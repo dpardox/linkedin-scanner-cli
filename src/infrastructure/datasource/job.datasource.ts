@@ -5,6 +5,7 @@ import { Job } from '@shared/types/job.type';
 
 export class JobDatasource extends JobRepository {
 
+  // TODO (dpardo): Move the job retention TTL to scanner configuration so deduplication can be adjusted without code changes.
   private readonly storage = new JSONStorageAdapter<Job, string>('jobs', { ttlDays: 30 });
 
   public async exists(id: string): Promise<boolean> {

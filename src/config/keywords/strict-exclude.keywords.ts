@@ -99,6 +99,7 @@ export const strictExcludeKeywords = [
   'Vue Developer',
   'Lead Vue.js',
   'Lead VUEJS',
+  'Vue.js',
   'Vue 3',
 
   //

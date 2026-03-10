@@ -3,8 +3,91 @@ import { JobCheckerApp } from './job-checker.app';
 import { LoggerPort } from '@ports/logger.port';
 import { JobDetailsExtractionError } from '@core/pages/job-details-extraction.error';
 import { jobDetailsFieldSelectors } from '@core/pages/job-details.selectors';
+import { defaultJobSearchFilters } from '@config/main.config';
+import { TimePostedRange } from '@enums/time-posted-range.enum';
 
 describe('JobCheckerApp', () => {
+
+  test('should merge default job search filters into expanded configs', () => {
+    const logger: LoggerPort = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      success: vi.fn(),
+      error: vi.fn(),
+      br: vi.fn(),
+    };
+
+    const app = new JobCheckerApp(
+      logger,
+      { notify: vi.fn() } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    const expandedConfigs = (app as any).expandConfigs([
+      {
+        query: 'angular',
+        locations: [ '92000000' as any ],
+        restrictedLocations: [],
+        filters: {
+          easyApply: true,
+        },
+        keywords: {
+          strictInclude: [],
+          include: [],
+          exclude: [],
+          strictExclude: [],
+        },
+        languages: [ 'spa' ],
+      },
+    ]);
+
+    expect(expandedConfigs).toHaveLength(1);
+    expect(expandedConfigs[0].filters).toEqual({
+      ...defaultJobSearchFilters,
+      easyApply: true,
+    });
+  });
+
+  test('should allow config filters to override default job search filters', () => {
+    const logger: LoggerPort = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      success: vi.fn(),
+      error: vi.fn(),
+      br: vi.fn(),
+    };
+
+    const app = new JobCheckerApp(
+      logger,
+      { notify: vi.fn() } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    const expandedConfigs = (app as any).expandConfigs([
+      {
+        query: 'angular',
+        locations: [ '92000000' as any ],
+        restrictedLocations: [],
+        filters: {
+          timePostedRange: TimePostedRange.week,
+        },
+        keywords: {
+          strictInclude: [],
+          include: [],
+          exclude: [],
+          strictExclude: [],
+        },
+        languages: [ 'spa' ],
+      },
+    ]);
+
+    expect(expandedConfigs).toHaveLength(1);
+    expect(expandedConfigs[0].filters.timePostedRange).toBe(TimePostedRange.week);
+  });
 
   test('should continue processing jobs after a single job failure', async () => {
     const logger: LoggerPort = {

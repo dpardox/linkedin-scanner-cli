@@ -1,9 +1,14 @@
 import { TimePostedRange } from '@enums/time-posted-range.enum';
 import { Location } from '@enums/location.enum';
 import { WorkType } from '@enums/work-type.enum';
+import { Filters } from '@shared/types/filters.type';
 import { JobSearchConfig } from '@shared/types/job-search-config.type';
 
 const defaultLanguages = ['eng', 'spa'];
+
+export const defaultJobSearchFilters: Filters = {
+  timePostedRange: TimePostedRange.day,
+};
 
 export const jobSearchConfigs: JobSearchConfig[] = [
   {
@@ -38,19 +43,6 @@ export const jobSearchConfigs: JobSearchConfig[] = [
     restrictedLocations: [],
 
     filters: {
-      /**
-       * Time range in which the job was posted.
-       *
-       * Use a TimePostedRange enum:
-       * Example: TimePostedRange.day
-       * Example: TimePostedRange.week
-       * Example: TimePostedRange.month
-       *
-       * Or use a raw LinkedIn format:
-       * Example: 'r604800' (jobs posted within the last 7 days)
-       */
-      timePostedRange: TimePostedRange.day,
-
       /**
        * Type of work arrangement.
        *

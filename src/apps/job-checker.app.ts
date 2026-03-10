@@ -1,4 +1,4 @@
-import { contentSearchQuery, jobSearchConfigs, runUndetermined } from '@config/main.config';
+import { contentSearchQuery, defaultJobSearchFilters, jobSearchConfigs, runUndetermined } from '@config/main.config';
 import { JobsSearchPage } from '@core/pages/jobs-search.page';
 import { LoginPage } from '@core/pages/login.page';
 import { matchWholeWord } from '@utils/match-whole-word.util';
@@ -109,6 +109,10 @@ export class JobCheckerApp {
       const { locations } = config;
       return locations.map(location => ({
         ...config,
+        filters: {
+          ...defaultJobSearchFilters,
+          ...config.filters,
+        },
         location,
       }));
     });

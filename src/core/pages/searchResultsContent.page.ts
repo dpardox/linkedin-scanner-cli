@@ -19,6 +19,7 @@ export class SearchResultsContentPage {
     url.searchParams.append('datePosted', '"past-24h"');
     url.searchParams.append('keywords', query);
     url.searchParams.append('origin', 'FACETED_SEARCH');
+    // TODO (dpardo): Replace hardcoded LinkedIn search context parameters with generated values or remove them if they are unnecessary.
     url.searchParams.append('searchId', 'f3f5c8d1-f9bb-4cb2-a4ff-13a00fc34937');
     url.searchParams.append('sid', 'G%3Bc');
     url.searchParams.append('sortBy', '"date_posted"');
