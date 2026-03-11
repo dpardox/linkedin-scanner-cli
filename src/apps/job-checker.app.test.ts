@@ -8,6 +8,10 @@ import { TimePostedRange } from '@enums/time-posted-range.enum';
 
 describe('JobCheckerApp', () => {
 
+  test('should use last week as default time posted range', () => {
+    expect(defaultJobSearchFilters.timePostedRange).toBe(TimePostedRange.week);
+  });
+
   test('should merge default job search filters into expanded configs', () => {
     const logger: LoggerPort = {
       info: vi.fn(),

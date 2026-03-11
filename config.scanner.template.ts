@@ -7,7 +7,7 @@ import { JobSearchConfig } from '@shared/types/job-search-config.type';
 const defaultLanguages = ['eng', 'spa'];
 
 export const defaultJobSearchFilters: Filters = {
-  timePostedRange: TimePostedRange.day,
+  timePostedRange: TimePostedRange.week,
 };
 
 export const jobSearchConfigs: JobSearchConfig[] = [

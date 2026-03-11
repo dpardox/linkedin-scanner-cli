@@ -90,6 +90,7 @@ export const fluentEnglishKeywords = [
   'Polish (Fluent)',
   'Inglés Avanzado',
   'Fluent English',
+  'English C1',
   'english only',
   'Inglés C1',
 ].filter(Boolean);

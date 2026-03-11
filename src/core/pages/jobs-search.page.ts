@@ -45,6 +45,7 @@ export class JobsSearchPage extends BasePage {
     location && url.searchParams.append('geoId', `${location}`);
     query && url.searchParams.append('keywords', query);
 
+    // TODO (dpardo): Extract LinkedIn search query params and sort strategy into typed configuration instead of hardcoding them in the page object.
     url.searchParams.append('origin', 'JOB_SEARCH_PAGE_JOB_FILTER');
     url.searchParams.append('refresh', 'true');
     url.searchParams.append('spellCorrectionEnabled', 'true');
