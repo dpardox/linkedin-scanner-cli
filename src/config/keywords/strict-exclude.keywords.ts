@@ -108,6 +108,7 @@ export const strictExcludeKeywords = [
 
   //
   'Experiencia demostrable en FastAPI',
+  'FastAPI, Django o Flask',
 
   // PM
   'Project Manager - Sr. Specialist Developer',

@@ -2,7 +2,6 @@ import { describe, expect, test } from 'vitest';
 import { strictExcludeKeywords } from './strict-exclude.keywords';
 
 describe('strictExcludeKeywords', () => {
-
   test('should include english c1 as a strict exclusion keyword', () => {
     expect(strictExcludeKeywords).toContain('English C1');
   });
@@ -10,5 +9,7 @@ describe('strictExcludeKeywords', () => {
   test('should include ingles medio alto as a strict exclusion keyword', () => {
     expect(strictExcludeKeywords).toContain('Inglés medio – alto');
   });
-
+  test('should include fastapi django o flask as a strict exclusion keyword', () => {
+    expect(strictExcludeKeywords).toContain('FastAPI, Django o Flask');
+  });
 });
