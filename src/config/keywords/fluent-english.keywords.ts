@@ -13,6 +13,7 @@ export const fluentEnglishKeywords = [
   'Advanced English Level is required for this role',
   'requires a minimum of a B1 English comprehension',
   'Nivel alto de inglés, tanto hablado como escrito',
+  'Inglés medio – alto',
   'Strong English verbal and written communication',
   'parte del proceso de selección será en inglés',
   'Nivel de inglés hablado y escrito medio/alto',
