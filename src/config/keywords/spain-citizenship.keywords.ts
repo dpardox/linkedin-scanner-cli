@@ -5,6 +5,7 @@ export const spainCitizenshipKeywords = [
   'remote position for people located in Spain',
   'Localización: Cualquier provincia de España',
   'Imprescindible estar ubicado en España',
+  'Residencia en España',
   'SOLO CANDIDATOS QUE VIVEN EN ESPAÑA',
   'imprescindible residencia en Madrid',
   'Residencia en España imprescindible',

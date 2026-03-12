@@ -9,7 +9,12 @@ describe('strictExcludeKeywords', () => {
   test('should include ingles medio alto as a strict exclusion keyword', () => {
     expect(strictExcludeKeywords).toContain('Inglés medio – alto');
   });
+
   test('should include fastapi django o flask as a strict exclusion keyword', () => {
     expect(strictExcludeKeywords).toContain('FastAPI, Django o Flask');
+  });
+
+  test('should include residencia en espana as a strict exclusion keyword', () => {
+    expect(strictExcludeKeywords).toContain('Residencia en España');
   });
 });
