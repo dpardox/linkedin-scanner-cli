@@ -1,5 +1,5 @@
 import { randms } from '@utils/randms.util';
-import { BrowserElementPort } from '@ports/browser-element.port';
+import { BrowserClickOptions, BrowserElementPort } from '@ports/browser-element.port';
 import { BrowserPagePort } from '@ports/browser-page.port';
 
 
@@ -24,11 +24,11 @@ export class BasePage {
     return await this.page.$eval(selector, (el: HTMLElement) => el.innerText);
   }
 
-  protected async click(element: BrowserElementPort): Promise<void> {
+  protected async click(element: BrowserElementPort, options?: BrowserClickOptions): Promise<void> {
     await element.waitForElementState('visible');
     await element.waitForElementState('stable');
     await element.scrollIntoViewIfNeeded();
-    await element.click();
+    await element.click(options);
     await this.page.waitForTimeout(randms());
   }
 

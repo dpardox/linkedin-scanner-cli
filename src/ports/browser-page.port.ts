@@ -34,6 +34,8 @@ export interface BrowserPagePort {
   getByRole(role: string, options?: BrowserGetByRoleOptions): BrowserLocatorPort;
   getByText(text: string, options?: BrowserGetByTextOptions): BrowserLocatorPort;
   title(): Promise<string>;
+  content(): Promise<string>;
+  screenshot(path: string): Promise<void>;
   url(): string;
   once(event: 'close', handler: () => void): void;
   pause(): Promise<void>;

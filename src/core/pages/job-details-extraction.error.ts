@@ -10,8 +10,9 @@ export class JobDetailsExtractionError extends Error {
     public readonly jobId: string,
     public readonly snapshot: JobDetailsSnapshot,
     selectorConfig: Record<JobDetailsFieldName, JobDetailsFieldSelectorConfig>,
+    public readonly artifactsDirectory?: string,
   ) {
-    super(JobDetailsExtractionError.buildMessage(jobId, snapshot, selectorConfig));
+    super(JobDetailsExtractionError.buildMessage(jobId, snapshot, selectorConfig, artifactsDirectory));
     this.name = 'JobDetailsExtractionError';
   }
 
@@ -19,12 +20,14 @@ export class JobDetailsExtractionError extends Error {
     jobId: string,
     snapshot: JobDetailsSnapshot,
     selectorConfig: Record<JobDetailsFieldName, JobDetailsFieldSelectorConfig>,
+    artifactsDirectory?: string,
   ): string {
     const missingFields = this.getMissingFields(snapshot, selectorConfig).join(', ');
     const matchedSelectors = this.getMatchedSelectors(snapshot);
     const configuredSelectors = this.getConfiguredSelectors(selectorConfig);
+    const artifacts = artifactsDirectory ? ` Artifacts: ${artifactsDirectory}.` : '';
 
-    return `Job details extraction failed for "${jobId}" at ${snapshot.url}. Missing required fields: ${missingFields}. Matched selectors: ${matchedSelectors}. Configured selectors: ${configuredSelectors}`;
+    return `Job details extraction failed for "${jobId}" at ${snapshot.url}. Missing required fields: ${missingFields}. Matched selectors: ${matchedSelectors}. Configured selectors: ${configuredSelectors}.${artifacts}`;
   }
 
   private static getMissingFields(

@@ -3,7 +3,6 @@ import { JobsSearchPage } from './jobs-search.page';
 import { BrowserLocatorPort } from '@ports/browser-locator.port';
 import { BrowserPagePort } from '@ports/browser-page.port';
 import { LoggerPort } from '@ports/logger.port';
-import { JobDetailsExtractionError } from './job-details-extraction.error';
 
 describe('JobsSearchPage', () => {
 
@@ -45,6 +44,8 @@ describe('JobsSearchPage', () => {
       $$: vi.fn(),
       getByRole: vi.fn(),
       getByText: vi.fn().mockReturnValue(locator),
+      content: vi.fn().mockResolvedValue('<html></html>'),
+      screenshot: vi.fn().mockResolvedValue(undefined),
       url: vi.fn().mockReturnValue('https://www.linkedin.com/jobs/search'),
       once: vi.fn(),
       pause: vi.fn(),
@@ -74,18 +75,37 @@ describe('JobsSearchPage', () => {
     expect(selectElement).toHaveBeenCalledWith('.jobs-description-content__text');
   });
 
-  test('should throw a selector extraction error when required fields stay missing', async () => {
+  test('should wait for next pagination page before continuing', async () => {
+    const createElement = (attributes: Record<string, string> = {}) => ({
+      waitForElementState: vi.fn().mockResolvedValue(undefined),
+      scrollIntoViewIfNeeded: vi.fn().mockResolvedValue(undefined),
+      hover: vi.fn().mockResolvedValue(undefined),
+      getAttribute: vi.fn().mockImplementation(async (name: string) => attributes[name] ?? null),
+      innerText: vi.fn(),
+      click: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi.fn(),
+    });
+
+    const activePage = createElement({ 'data-test-pagination-page-btn': '1' });
+    const nextPageButton = createElement({ 'data-test-pagination-page-btn': '2' });
+
     const page = {
       goto: vi.fn(),
       waitForTimeout: vi.fn().mockResolvedValue(undefined),
       evaluate: vi.fn(),
       $eval: vi.fn(),
-      waitForSelector: vi.fn(),
-      $: vi.fn(),
+      waitForSelector: vi.fn().mockResolvedValue(null),
+      $: vi.fn().mockImplementation(async (selector: string) => {
+        if (selector === '.artdeco-pagination__indicator--number.active') return activePage;
+        if (selector === '.artdeco-pagination__indicator--number[data-test-pagination-page-btn="2"]') return nextPageButton;
+        return null;
+      }),
       $$: vi.fn(),
       getByRole: vi.fn(),
       getByText: vi.fn(),
-      url: vi.fn().mockReturnValue('https://www.linkedin.com/jobs/search/?currentJobId=4377411406'),
+      content: vi.fn().mockResolvedValue('<html></html>'),
+      screenshot: vi.fn().mockResolvedValue(undefined),
+      url: vi.fn().mockReturnValue('https://www.linkedin.com/jobs/search/?start=25'),
       once: vi.fn(),
       pause: vi.fn(),
     } as unknown as BrowserPagePort;
@@ -99,34 +119,13 @@ describe('JobsSearchPage', () => {
     };
 
     const jobsSearchPage = new JobsSearchPage(page, logger);
+    await expect(jobsSearchPage.nextPage()).resolves.toBe(true);
 
-    vi.spyOn(jobsSearchPage as any, 'readJobDetails').mockResolvedValue({
-      url: 'https://www.linkedin.com/jobs/search/?currentJobId=4377411406',
-      fields: {
-        title: { value: '', selector: null },
-        location: {
-          value: 'Colombia',
-          selector: '.job-details-jobs-unified-top-card__primary-description-container',
-        },
-        description: { value: '', selector: null },
-      },
-    });
-
-    vi.spyOn(Date, 'now')
-      .mockReturnValueOnce(0)
-      .mockReturnValueOnce(0)
-      .mockReturnValueOnce(31_000);
-
-    let thrownError: unknown;
-
-    try {
-      await (jobsSearchPage as any).waitForJobDetails('4377411406');
-    } catch (error) {
-      thrownError = error;
-    }
-
-    expect(thrownError).toBeInstanceOf(JobDetailsExtractionError);
-    expect((thrownError as Error).message).toContain('Missing required fields: title, description');
+    expect(nextPageButton.click).toHaveBeenCalled();
+    expect(page.waitForSelector).toHaveBeenCalledWith(
+      '.artdeco-pagination__indicator--number.active[data-test-pagination-page-btn="2"]',
+      { timeout: 10_000 },
+    );
   });
 
 });

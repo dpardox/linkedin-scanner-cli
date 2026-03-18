@@ -60,6 +60,14 @@ export class PlaywrightPageAdapter implements BrowserPagePort {
     return await this.page.title();
   }
 
+  public async content(): Promise<string> {
+    return await this.page.content();
+  }
+
+  public async screenshot(path: string): Promise<void> {
+    await this.page.screenshot({ path, fullPage: true });
+  }
+
   public url(): string {
     return this.page.url();
   }

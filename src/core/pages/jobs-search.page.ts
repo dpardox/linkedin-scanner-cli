@@ -7,13 +7,8 @@ import { LoggerPort } from '@ports/logger.port';
 import { normalize } from '@utils/normalize.util';
 import { JobModel } from '@models/job.model';
 import { BrowserPagePort } from '@ports/browser-page.port';
-import { JobDetailsExtractionError } from './job-details-extraction.error';
-import {
-  jobDetailsFieldSelectors,
-  JobDetailsFieldName,
-  JobDetailsFieldSnapshot,
-  JobDetailsSnapshot,
-} from './job-details.selectors';
+import { JobDetailsSnapshot } from './job-details.selectors';
+import { JobDetailsExtractor } from './job-details.extractor';
 
 
 export class JobsSearchPage extends BasePage {
@@ -21,6 +16,7 @@ export class JobsSearchPage extends BasePage {
   static readonly url: string = 'https://www.linkedin.com/jobs/search';
 
   private currentSearchUrl: string | null = null;
+  private readonly jobDetailsExtractor: JobDetailsExtractor;
 
 
   constructor(
@@ -28,6 +24,7 @@ export class JobsSearchPage extends BasePage {
     private readonly logger: LoggerPort,
   ) {
     super(page);
+    this.jobDetailsExtractor = new JobDetailsExtractor(page, logger);
   }
 
 
@@ -149,8 +146,12 @@ export class JobsSearchPage extends BasePage {
       return false;
     }
 
-    this.logger.info('Going to page %s...', +currentPage + 1);
-    this.click(nextPage);
+    const nextPageNumber = +currentPage + 1;
+
+    this.logger.info('Going to page %s...', nextPageNumber);
+    await this.click(nextPage);
+    await this.waitForPaginationPage(nextPageNumber);
+    this.rememberCurrentSearchUrl();
     return true;
   }
 
@@ -229,13 +230,11 @@ export class JobsSearchPage extends BasePage {
     await item.scrollIntoViewIfNeeded();
     await this.page.waitForTimeout(randms());
     await item.hover();
-    await this.page.waitForTimeout(randms());
-    await item.click({ force: true });
-    await this.page.waitForTimeout(randms());
+    await this.page.waitForTimeout(randms(.15, .35));
+    await this.click(item, { force: true });
+    await this.waitForJobSelection(job);
 
     this.logger.info(`Selected job "%s"`, await this.getJobTitle(job));
-
-    await this.alreadySelected(job);
   }
 
   public async getJobDetails(jobId: string): Promise<JobModel> {
@@ -322,80 +321,39 @@ export class JobsSearchPage extends BasePage {
 
   private async loadJobDetails(jobId: string): Promise<JobDetailsSnapshot> {
     try {
-      return await this.waitForJobDetails(jobId);
+      return await this.jobDetailsExtractor.extract(jobId, { captureArtifacts: false });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn('Retrying job "%s" details after refresh: %s', jobId, message);
       await this.recoverSearchResults();
       await this.selectJob(jobId);
-      return await this.waitForJobDetails(jobId);
+      return await this.jobDetailsExtractor.extract(jobId);
     }
   }
 
-  private async waitForJobDetails(jobId: string): Promise<JobDetailsSnapshot> {
-    const timeout = 30_000;
-    const interval = 500;
+  private async waitForPaginationPage(pageNumber: number, timeout = 10_000): Promise<void> {
+    const selector = `.artdeco-pagination__indicator--number.active[data-test-pagination-page-btn="${pageNumber}"]`;
+    await this.page.waitForSelector(selector, { timeout });
+    await this.page.waitForSelector('.scaffold-layout__list', { timeout });
+  }
+
+  private async waitForJobSelection(jobId: string, timeout = 10_000): Promise<void> {
     const startedAt = Date.now();
-    let snapshot = await this.readJobDetails();
+    const expectedJobToken = `currentJobId=${jobId}`;
 
     while (Date.now() - startedAt < timeout) {
-      if (this.hasRequiredJobDetails(snapshot)) {
-        return snapshot;
+      if (this.page.url().includes(expectedJobToken)) {
+        return;
       }
 
-      await this.page.waitForTimeout(interval);
-      snapshot = await this.readJobDetails();
-    }
-
-    throw new JobDetailsExtractionError(jobId, snapshot, jobDetailsFieldSelectors);
-  }
-
-  private async readJobDetails(): Promise<JobDetailsSnapshot> {
-    const [title, location, description] = await Promise.all([
-      this.readJobDetailField('title'),
-      this.readJobDetailField('location'),
-      this.readJobDetailField('description'),
-    ]);
-
-    return {
-      url: this.page.url(),
-      fields: {
-        title,
-        location,
-        description,
-      },
-    };
-  }
-
-  private hasRequiredJobDetails(snapshot: JobDetailsSnapshot): boolean {
-    const fields = Object.keys(jobDetailsFieldSelectors) as JobDetailsFieldName[];
-    return fields.every((field) => {
-      const { required } = jobDetailsFieldSelectors[field];
-      return !required || !!snapshot.fields[field].value;
-    });
-  }
-
-  private async readJobDetailField(field: JobDetailsFieldName): Promise<JobDetailsFieldSnapshot> {
-    const { selectors } = jobDetailsFieldSelectors[field];
-    return await this.readFirstAvailableText(selectors);
-  }
-
-  private async readFirstAvailableText(selectors: string[]): Promise<JobDetailsFieldSnapshot> {
-    for (const selector of selectors) {
-      const value = await this.readTextBySelector(selector);
-
-      if (value) {
-        return {
-          value,
-          selector,
-        };
+      if (await this.alreadySelected(jobId, false)) {
+        return;
       }
+
+      await this.page.waitForTimeout(200);
     }
 
-    return {
-      value: '',
-      selector: null,
-    };
+    throw new Error(`Timed out waiting for job "${jobId}" selection.`);
   }
 
   private async readTextBySelector(selector: string): Promise<string> {
