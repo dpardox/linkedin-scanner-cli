@@ -10,6 +10,10 @@ describe('strictExcludeKeywords', () => {
     expect(strictExcludeKeywords).toContain('Inglés medio – alto');
   });
 
+  test('should include ingles alto imprescindible as a strict exclusion keyword', () => {
+    expect(strictExcludeKeywords).toContain('Inglés alto imprescindible');
+  });
+
   test('should include fastapi django o flask as a strict exclusion keyword', () => {
     expect(strictExcludeKeywords).toContain('FastAPI, Django o Flask');
   });
