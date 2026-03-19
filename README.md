@@ -27,6 +27,14 @@ If LinkedIn closes the session, delete that file, run `npm start`, and log in ma
 
 Copy the `config.scanner.template.ts` file to `config.scanner.ts` and adjust the configuration as needed.
 
+The scanner automatically runs each configured search in this order:
+
+1. Last day
+2. Last week
+3. Last month
+
+Do not set `timePostedRange` manually in the config.
+
 Run `npm i` to install the dependencies.
 
 ## How to run
@@ -38,3 +46,10 @@ Run `npm start` to launch the scanner.
 ## To keep in mind
 
 - The use of method `waitForTimeout` is for preventing the browser overload and simulate human behavior.
+
+
+
+
+comenzar por un día, una semana y luego un mes
+al finalizar comenzar a evaluar los unknowns con un input de descarte o enter para seguir evaluando.
+for you reemplaza el recent activity temporalmente

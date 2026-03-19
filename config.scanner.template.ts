@@ -1,4 +1,3 @@
-import { TimePostedRange } from '@enums/time-posted-range.enum';
 import { Location } from '@enums/location.enum';
 import { WorkType } from '@enums/work-type.enum';
 import { Filters } from '@shared/types/filters.type';
@@ -7,7 +6,6 @@ import { JobSearchConfig } from '@shared/types/job-search-config.type';
 const defaultLanguages = ['eng', 'spa'];
 
 export const defaultJobSearchFilters: Filters = {
-  timePostedRange: TimePostedRange.week,
 };
 
 export const jobSearchConfigs: JobSearchConfig[] = [
@@ -43,6 +41,13 @@ export const jobSearchConfigs: JobSearchConfig[] = [
     restrictedLocations: [],
 
     filters: {
+      /**
+       * The scanner automatically runs each search for:
+       * last day -> last week -> last month.
+       *
+       * Do not configure timePostedRange here.
+       */
+
       /**
        * Type of work arrangement.
        *

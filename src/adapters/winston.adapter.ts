@@ -1,7 +1,7 @@
 import { clearScreenDown, cursorTo } from 'node:readline';
 import { format as formatMessage } from 'node:util';
 import { createLogger, Logger, format, transports } from 'winston';
-import { LoggerContext, LoggerPort } from '@ports/logger.port';
+import { ForYouEntry, LoggerContext, LoggerPort } from '@ports/logger.port';
 import { addColors } from 'winston/lib/winston/config';
 
 type LogLevel = 'error' | 'success' | 'warn' | 'info';
@@ -16,6 +16,7 @@ export class WinstonAdapter implements LoggerPort {
   private readonly logger: Logger;
   private readonly interactive = Boolean(process.stdout.isTTY);
   private readonly recentLogs: LogEntry[] = [];
+  private readonly forYouEntries: ForYouEntry[] = [];
   private readonly counts: Record<LogLevel, number> = {
     error: 0,
     success: 0,
@@ -24,6 +25,7 @@ export class WinstonAdapter implements LoggerPort {
   };
   private readonly startedAt = new Date();
   private readonly maxRecentLogs = 8;
+  private readonly maxForYouEntries = 3;
   private context: LoggerContext = {};
 
   private readonly customLevels = {
@@ -112,6 +114,18 @@ export class WinstonAdapter implements LoggerPort {
     this.track('success', message, args);
   }
 
+  public forYou(entry: ForYouEntry): void {
+    this.logger.log('success', 'For you "%O"', entry);
+    this.counts.success += 1;
+    this.forYouEntries.push(entry);
+
+    if (this.forYouEntries.length > this.maxForYouEntries) {
+      this.forYouEntries.shift();
+    }
+
+    this.render();
+  }
+
   public br(): void {
     if (!this.interactive) {
       process.stdout.write('\n');
@@ -156,11 +170,41 @@ export class WinstonAdapter implements LoggerPort {
       `Job: ${this.context.jobId ?? '-'}`,
       `Events: ${this.style(`ok ${this.counts.success}`, 'green')} | ${this.style(`info ${this.counts.info}`, 'blue')} | ${this.style(`warn ${this.counts.warn}`, 'yellow')} | ${this.style(`err ${this.counts.error}`, 'red')}`,
       '',
+      'For you:',
+      ...this.getForYouLines(),
+      '',
       'Recent activity:',
       ...this.getLogLines(),
     ];
 
     return `${lines.join('\n')}\n`;
+  }
+
+  private getForYouLines(): string[] {
+    if (!this.forYouEntries.length) {
+      return [this.dim('  no jobs shortlisted yet')];
+    }
+
+    return this.forYouEntries
+      .slice()
+      .reverse()
+      .flatMap((entry, index, entries) => {
+        const lines = [
+          `  ${this.style(`${index + 1}. ${entry.title}`, 'green')}`,
+          `    Job ID: ${entry.id}`,
+          `    Location: ${entry.location}`,
+          `    Language: ${entry.language}`,
+          `    Emails: ${entry.emails.length ? entry.emails.join(', ') : 'not found'}`,
+          '    Review: pending manual check',
+          `    Link: ${this.style(entry.link, 'blue')}`,
+        ];
+
+        if (index < entries.length - 1) {
+          lines.push('');
+        }
+
+        return lines;
+      });
   }
 
   private getLogLines(): string[] {

@@ -12,6 +12,7 @@ describe('ChromiumAdapter', () => {
     error: vi.fn(),
     warn: vi.fn(),
     success: vi.fn(),
+    forYou: vi.fn(),
     br: vi.fn(),
   };
 

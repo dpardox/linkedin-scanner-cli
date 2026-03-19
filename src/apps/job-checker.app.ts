@@ -13,9 +13,16 @@ import { BrowserPort } from '@ports/browser.port';
 import { LangDetectorPort } from '@ports/lang-detector.port';
 import { JobRepository } from '@repository/job.repository';
 import { JobDetailsExtractionError } from '@core/pages/job-details-extraction.error';
+import { TimePostedRange } from '@enums/time-posted-range.enum';
 
 
 export class JobCheckerApp {
+
+  private static readonly automaticTimePostedRanges: TimePostedRange[] = [
+    TimePostedRange.day,
+    TimePostedRange.week,
+    TimePostedRange.month,
+  ];
 
   private jobsSearchPage!: JobsSearchPage;
   private loginPage!: LoginPage;
@@ -120,29 +127,46 @@ export class JobCheckerApp {
   private expandConfigs(configs: JobSearchConfig[]): ExpandedJobSearchConfig[] {
     return configs.flatMap(config => {
       const { locations } = config;
+      const mergedFilters = {
+        ...defaultJobSearchFilters,
+        ...config.filters,
+      };
+      const { timePostedRange: _ignoredTimePostedRange, ...filters } = mergedFilters;
+
       return locations.map(location => ({
         ...config,
-        filters: {
-          ...defaultJobSearchFilters,
-          ...config.filters,
-        },
+        filters,
         location,
       }));
     });
   }
 
   private async jobSearch(config: ExpandedJobSearchConfig): Promise<void> {
+    for (const timePostedRange of JobCheckerApp.automaticTimePostedRanges) {
+      await this.jobSearchByTimePostedRange(config, timePostedRange);
+    }
+  }
+
+  private async jobSearchByTimePostedRange(
+    config: ExpandedJobSearchConfig,
+    timePostedRange: TimePostedRange,
+  ): Promise<void> {
     const { query, location, filters } = config;
+    const timePostedRangeLabel = this.describeTimePostedRange(timePostedRange);
     this.logger.setContext({
-      phase: 'Opening jobs search',
+      phase: `Opening jobs search (${timePostedRangeLabel})`,
       searchQuery: query,
       location,
       jobId: undefined,
     });
-    await this.jobsSearchPage.open(query, location, filters);
+    this.logger.info('Running jobs search for %s...', timePostedRangeLabel);
+    await this.jobsSearchPage.open(query, location, {
+      ...filters,
+      timePostedRange,
+    });
 
     do {
-      this.logger.setContext({ phase: 'Scanning jobs list', jobId: undefined });
+      this.logger.setContext({ phase: `Scanning jobs list (${timePostedRangeLabel})`, jobId: undefined });
       this.logger.br();
       if (await this.noJobsFound()) break;
       const jobIds = await this.getJobIds();
@@ -172,7 +196,20 @@ export class JobCheckerApp {
       }
     } while (await this.jobsSearchPage.nextPage());
 
-    this.logger.setContext({ phase: 'Search completed', jobId: undefined });
+    this.logger.setContext({ phase: `Search completed (${timePostedRangeLabel})`, jobId: undefined });
+  }
+
+  private describeTimePostedRange(timePostedRange: TimePostedRange): string {
+    switch (timePostedRange) {
+      case TimePostedRange.day:
+        return 'last day';
+      case TimePostedRange.week:
+        return 'last week';
+      case TimePostedRange.month:
+        return 'last month';
+      default:
+        return 'custom range';
+    }
   }
 
   private async noJobsFound(): Promise<boolean> {
@@ -350,7 +387,7 @@ export class JobCheckerApp {
     this.logger.info('Potential match found!');
     const { id, title, link, location, emails } = job;
 
-    this.logger.success('For you  "%O"', {
+    this.logger.forYou({
       id,
       title,
       link,

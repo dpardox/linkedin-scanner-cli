@@ -57,6 +57,7 @@ describe('JobsSearchPage', () => {
       warn: vi.fn(),
       success: vi.fn(),
       error: vi.fn(),
+      forYou: vi.fn(),
       br: vi.fn(),
     };
 
@@ -117,6 +118,7 @@ describe('JobsSearchPage', () => {
       warn: vi.fn(),
       success: vi.fn(),
       error: vi.fn(),
+      forYou: vi.fn(),
       br: vi.fn(),
     };
 

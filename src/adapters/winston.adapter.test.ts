@@ -54,4 +54,33 @@ describe('WinstonAdapter', () => {
     winstonAdapter.success('Test success');
     expect(mockLog).toHaveBeenCalledWith('success', 'Test success');
   });
+
+  test('should render "for you" entries in a dedicated section', () => {
+    winstonAdapter.forYou({
+      id: '4386875881',
+      title: 'Programador full stack',
+      link: 'https://www.linkedin.com/jobs/view/4386875881/',
+      location: 'Canary Islands, Spain',
+      emails: [],
+      language: 'spa',
+    });
+
+    expect(mockLog).toHaveBeenCalledWith('success', 'For you "%O"', {
+      id: '4386875881',
+      title: 'Programador full stack',
+      link: 'https://www.linkedin.com/jobs/view/4386875881/',
+      location: 'Canary Islands, Spain',
+      emails: [],
+      language: 'spa',
+    });
+    expect((winstonAdapter as any).recentLogs).toHaveLength(0);
+    expect((winstonAdapter as any).forYouEntries).toHaveLength(1);
+
+    const screen = (winstonAdapter as any).buildScreen();
+    expect(screen).toContain('For you:');
+    expect(screen).toContain('Programador full stack');
+    expect(screen).toContain('Review: pending manual check');
+    expect(screen).toContain('Recent activity:');
+    expect(screen).toContain('waiting for events...');
+  });
 });
