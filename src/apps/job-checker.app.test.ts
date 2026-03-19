@@ -96,7 +96,7 @@ describe('JobCheckerApp', () => {
     });
   });
 
-  test('should search day, week and month in order', async () => {
+  test('should search all configs by day, then week and finally month', async () => {
     const logger: LoggerPort = {
       setContext: vi.fn(),
       info: vi.fn(),
@@ -123,28 +123,53 @@ describe('JobCheckerApp', () => {
     (app as any).jobsSearchPage = jobsSearchPage;
     vi.spyOn(app as any, 'noJobsFound').mockResolvedValue(true);
 
-    await (app as any).jobSearch({
-      query: 'angular',
-      location: '92000000',
-      filters: {
-        easyApply: true,
-        workType: WorkType.remote,
+    await (app as any).runJobSearches([
+      {
+        query: 'angular',
+        location: '92000000',
+        filters: {
+          easyApply: true,
+          workType: WorkType.remote,
+        },
       },
-    });
+      {
+        query: 'react',
+        location: '103644278',
+        filters: {
+          easyApply: false,
+          workType: WorkType.hybrid,
+        },
+      },
+    ]);
 
     expect(jobsSearchPage.open).toHaveBeenNthCalledWith(1, 'angular', '92000000', {
       easyApply: true,
       workType: WorkType.remote,
       timePostedRange: TimePostedRange.day,
     });
-    expect(jobsSearchPage.open).toHaveBeenNthCalledWith(2, 'angular', '92000000', {
-      easyApply: true,
-      workType: WorkType.remote,
-      timePostedRange: TimePostedRange.week,
+    expect(jobsSearchPage.open).toHaveBeenNthCalledWith(2, 'react', '103644278', {
+      easyApply: false,
+      workType: WorkType.hybrid,
+      timePostedRange: TimePostedRange.day,
     });
     expect(jobsSearchPage.open).toHaveBeenNthCalledWith(3, 'angular', '92000000', {
       easyApply: true,
       workType: WorkType.remote,
+      timePostedRange: TimePostedRange.week,
+    });
+    expect(jobsSearchPage.open).toHaveBeenNthCalledWith(4, 'react', '103644278', {
+      easyApply: false,
+      workType: WorkType.hybrid,
+      timePostedRange: TimePostedRange.week,
+    });
+    expect(jobsSearchPage.open).toHaveBeenNthCalledWith(5, 'angular', '92000000', {
+      easyApply: true,
+      workType: WorkType.remote,
+      timePostedRange: TimePostedRange.month,
+    });
+    expect(jobsSearchPage.open).toHaveBeenNthCalledWith(6, 'react', '103644278', {
+      easyApply: false,
+      workType: WorkType.hybrid,
       timePostedRange: TimePostedRange.month,
     });
   });

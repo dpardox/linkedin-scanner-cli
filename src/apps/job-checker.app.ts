@@ -102,11 +102,7 @@ export class JobCheckerApp {
     this.jobsSearchPage = new JobsSearchPage(firstPage, this.logger);
 
     const expandedConfigs = this.expandConfigs(jobSearchConfigs);
-
-    for (const config of expandedConfigs) {
-      this.logger.br();
-      await this.jobSearch(config);
-    }
+    await this.runJobSearches(expandedConfigs);
 
     const searchResultsContentPage = new SearchResultsContentPage(await this.browser.firstPage(), this.logger);
     this.logger.setContext({
@@ -141,9 +137,12 @@ export class JobCheckerApp {
     });
   }
 
-  private async jobSearch(config: ExpandedJobSearchConfig): Promise<void> {
+  private async runJobSearches(configs: ExpandedJobSearchConfig[]): Promise<void> {
     for (const timePostedRange of JobCheckerApp.automaticTimePostedRanges) {
-      await this.jobSearchByTimePostedRange(config, timePostedRange);
+      for (const config of configs) {
+        this.logger.br();
+        await this.jobSearchByTimePostedRange(config, timePostedRange);
+      }
     }
   }
 
