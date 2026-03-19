@@ -7,6 +7,7 @@ describe('ChromiumAdapter', () => {
   let adapter: ChromiumAdapter;
 
   const logger: LoggerPort = {
+    setContext: vi.fn(),
     info: vi.fn(),
     error: vi.fn(),
     warn: vi.fn(),

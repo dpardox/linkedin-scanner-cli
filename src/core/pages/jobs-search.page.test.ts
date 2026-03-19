@@ -52,6 +52,7 @@ describe('JobsSearchPage', () => {
     } as unknown as BrowserPagePort;
 
     const logger: LoggerPort = {
+      setContext: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
       success: vi.fn(),
@@ -111,6 +112,7 @@ describe('JobsSearchPage', () => {
     } as unknown as BrowserPagePort;
 
     const logger: LoggerPort = {
+      setContext: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
       success: vi.fn(),

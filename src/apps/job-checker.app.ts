@@ -33,6 +33,7 @@ export class JobCheckerApp {
   public async run(): Promise<void> {
     try {
       this.showUndetermined = false;
+      this.logger.setContext({ runMode: 'default', phase: 'Starting run', jobId: undefined });
       await this.tryRun();
 
       if (runUndetermined) {
@@ -41,12 +42,15 @@ export class JobCheckerApp {
         this.logger.br();
 
         this.showUndetermined = true;
+        this.logger.setContext({ runMode: 'undetermined', phase: 'Starting second run', jobId: undefined });
         await this.tryRun();
       }
 
+      this.logger.setContext({ phase: 'Finished', jobId: undefined });
       this.logger.success('Execution finished!');
 
     } catch (error) {
+      this.logger.setContext({ phase: 'Handling failure' });
       let browserClosed = false;
       try {
         browserClosed = this.browser.isClosed();
@@ -82,6 +86,7 @@ export class JobCheckerApp {
   }
 
   public async tryRun(): Promise<void> {
+    this.logger.setContext({ phase: 'Launching browser', jobId: undefined });
     await this.browser.launch({ headless: false });
 
     const firstPage = await this.browser.firstPage();
@@ -97,10 +102,18 @@ export class JobCheckerApp {
     }
 
     const searchResultsContentPage = new SearchResultsContentPage(await this.browser.firstPage(), this.logger);
+    this.logger.setContext({
+      phase: 'Opening content search',
+      searchQuery: contentSearchQuery,
+      location: undefined,
+      jobId: undefined,
+    });
     this.notifier.notify();
     await searchResultsContentPage.open(contentSearchQuery);
+    this.logger.setContext({ phase: 'Waiting for manual close' });
     await searchResultsContentPage.waitForManualClose();
 
+    this.logger.setContext({ phase: 'Closing browser', jobId: undefined });
     await this.browser.close();
   }
 
@@ -120,14 +133,22 @@ export class JobCheckerApp {
 
   private async jobSearch(config: ExpandedJobSearchConfig): Promise<void> {
     const { query, location, filters } = config;
+    this.logger.setContext({
+      phase: 'Opening jobs search',
+      searchQuery: query,
+      location,
+      jobId: undefined,
+    });
     await this.jobsSearchPage.open(query, location, filters);
 
     do {
+      this.logger.setContext({ phase: 'Scanning jobs list', jobId: undefined });
       this.logger.br();
       if (await this.noJobsFound()) break;
       const jobIds = await this.getJobIds();
 
       for (const jobId of jobIds) {
+        this.logger.setContext({ phase: 'Reviewing job', jobId });
         this.logger.br();
         try {
           await this.jobsSearchPage.markJobAsCurrent(jobId);
@@ -142,6 +163,7 @@ export class JobCheckerApp {
           if (!this.loginPage.isAuthenticated()) {
             await this.ensureAuthenticated();
           }
+          this.logger.setContext({ phase: 'Recovering search results', jobId });
           await this.jobsSearchPage.recoverSearchResults();
         } finally {
           await this.jobsSearchPage.markJobAsSeen(jobId);
@@ -149,6 +171,8 @@ export class JobCheckerApp {
 
       }
     } while (await this.jobsSearchPage.nextPage());
+
+    this.logger.setContext({ phase: 'Search completed', jobId: undefined });
   }
 
   private async noJobsFound(): Promise<boolean> {
@@ -156,6 +180,7 @@ export class JobCheckerApp {
   }
 
   private async ensureAuthenticated(): Promise<void> {
+    this.logger.setContext({ phase: 'Authenticating session' });
     await this.loginPage.ensureAuthenticated(async () => {
       await this.browser.clearCookies();
     });
@@ -188,6 +213,7 @@ export class JobCheckerApp {
   }
 
   private async checkJob(jobId: string, config: ExpandedJobSearchConfig): Promise<void> {
+    this.logger.setContext({ phase: 'Evaluating job', jobId });
     const jobModel = await this.getJobDetails(jobId);
 
     if (await this.isDissmissedJob(jobId)) return;
@@ -200,6 +226,7 @@ export class JobCheckerApp {
   }
 
   private async getJobDetails(jobId: string): Promise<JobModel> {
+    this.logger.setContext({ phase: 'Extracting job details', jobId });
     await this.jobsSearchPage.selectJob(jobId);
     const jobModel = await this.jobsSearchPage.getJobDetails(jobId);
     return await this.jobRepository.upsert(jobId, jobModel);
@@ -300,6 +327,7 @@ export class JobCheckerApp {
   }
 
   private async skipJob(job: JobModel): Promise<void> {
+    this.logger.setContext({ phase: 'Skipping job', jobId: job.id });
     this.logger.info('Skipping job "%s"...', job.title);
     await this.updateJobStatus(job.id, JobStatus.dissmissed);
   }
@@ -312,11 +340,13 @@ export class JobCheckerApp {
   }
 
   private async markJobAsUndetermined(job: JobModel): Promise<void> {
+    this.logger.setContext({ phase: 'Marking undetermined', jobId: job.id });
     this.logger.warn('Marking job "%s" as undetermined...', job.id);
     await this.updateJobStatus(job.id, JobStatus.undetermined);
   }
 
   private showPotentialMatch(job: JobModel): void {
+    this.logger.setContext({ phase: 'Potential match found', jobId: job.id });
     this.logger.info('Potential match found!');
     const { id, title, link, location, emails } = job;
 
@@ -331,6 +361,7 @@ export class JobCheckerApp {
   }
 
   private async markForManualCheck(job: JobModel): Promise<void> {
+    this.logger.setContext({ phase: 'Waiting manual review', jobId: job.id });
     this.logger.info('Marking job "%s" for manual check...', job.id);
     await this.jobsSearchPage.markJobForReview(job.id);
     this.notifier.notify();

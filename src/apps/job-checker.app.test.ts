@@ -14,6 +14,7 @@ describe('JobCheckerApp', () => {
 
   test('should merge default job search filters into expanded configs', () => {
     const logger: LoggerPort = {
+      setContext: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
       success: vi.fn(),
@@ -54,6 +55,7 @@ describe('JobCheckerApp', () => {
 
   test('should allow config filters to override default job search filters', () => {
     const logger: LoggerPort = {
+      setContext: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
       success: vi.fn(),
@@ -91,6 +93,7 @@ describe('JobCheckerApp', () => {
 
   test('should continue processing jobs after a single job failure', async () => {
     const logger: LoggerPort = {
+      setContext: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
       success: vi.fn(),
@@ -142,6 +145,7 @@ describe('JobCheckerApp', () => {
 
   test('should stop processing jobs when job detail selectors fail', async () => {
     const logger: LoggerPort = {
+      setContext: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
       success: vi.fn(),
