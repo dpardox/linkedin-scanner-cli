@@ -5,7 +5,9 @@ import { JobDetailsExtractionError } from '@core/pages/job-details-extraction.er
 import { jobDetailsFieldSelectors } from '@core/pages/job-details.selectors';
 import { defaultJobSearchFilters } from '@config/main.config';
 import { TimePostedRange } from '@enums/time-posted-range.enum';
+import { JobStatus } from '@enums/job-status.enum';
 import { WorkType } from '@enums/work-type.enum';
+import { JobModel } from '@models/job.model';
 
 describe('JobCheckerApp', () => {
 
@@ -290,6 +292,89 @@ describe('JobCheckerApp', () => {
     expect(jobsSearchPage.recoverSearchResults).not.toHaveBeenCalled();
     expect(jobsSearchPage.markJobAsSeen).toHaveBeenCalledTimes(1);
     expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  test('should return matched shortlist criteria for manual review', async () => {
+    const logger: LoggerPort = {
+      setContext: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      success: vi.fn(),
+      error: vi.fn(),
+      forYou: vi.fn(),
+      br: vi.fn(),
+    };
+
+    const app = new JobCheckerApp(
+      logger,
+      { notify: vi.fn() } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    const criteria = await (app as any).getJobFitness(new JobModel({
+      id: '4386875881',
+      title: 'Angular Developer',
+      description: 'Angular and TypeScript role',
+      location: 'Remote',
+      highSkillsMatch: true,
+    }), {
+      restrictedLocations: [],
+      keywords: {
+        strictInclude: ['Angular', 'React'],
+        strictExclude: [],
+      },
+    });
+
+    expect(criteria).toEqual(['Angular', 'High skills match']);
+  });
+
+  test('should resume the scanner context after manual review finishes', async () => {
+    const logger: LoggerPort = {
+      setContext: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      success: vi.fn(),
+      error: vi.fn(),
+      forYou: vi.fn(),
+      br: vi.fn(),
+    };
+
+    const jobRepository = {
+      update: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const app = new JobCheckerApp(
+      logger,
+      { notify: vi.fn() } as any,
+      {} as any,
+      {} as any,
+      jobRepository as any,
+    );
+
+    (app as any).jobsSearchPage = {
+      markJobForReview: vi.fn().mockResolvedValue(undefined),
+      waitForJobToBeDismissed: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await (app as any).markForManualCheck({
+      id: '4386875881',
+      title: 'Programador full stack',
+    });
+
+    expect(logger.setContext).toHaveBeenNthCalledWith(1, {
+      phase: 'Waiting manual review',
+      jobId: '4386875881',
+    });
+    expect(logger.setContext).toHaveBeenNthCalledWith(2, {
+      phase: 'Resuming scan',
+      jobId: '4386875881',
+    });
+    expect(jobRepository.update).toHaveBeenCalledWith('4386875881', {
+      status: JobStatus.dissmissed,
+    });
+    expect(logger.success).toHaveBeenCalledWith('Job "%s" reviewed!', 'Programador full stack');
   });
 
 });

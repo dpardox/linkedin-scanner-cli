@@ -13,6 +13,7 @@ export type ForYouEntry = {
   location: string;
   emails: string[];
   language: string;
+  criteria: string[];
 };
 
 export interface LoggerPort {

@@ -255,9 +255,10 @@ export class JobCheckerApp {
     if (await this.isDissmissedJob(jobId)) return;
     if (await this.isAppliedJob(jobId)) return;
     if (!await this.hasValidLanguage(jobModel, config.languages)) return;
-    if (!await this.getJobFitness(jobModel, config)) return;
+    const shortlistCriteria = await this.getJobFitness(jobModel, config);
+    if (!shortlistCriteria.length) return;
 
-    this.showPotentialMatch(jobModel);
+    this.showPotentialMatch(jobModel, shortlistCriteria);
     await this.markForManualCheck(jobModel);
   }
 
@@ -303,15 +304,23 @@ export class JobCheckerApp {
     return true;
   }
 
-  private async getJobFitness(job: JobModel, config: ExpandedJobSearchConfig): Promise<boolean> {
+  private async getJobFitness(job: JobModel, config: ExpandedJobSearchConfig): Promise<string[]> {
     this.logger.info('Checking if job "%s" is a good fit...', job.id);
 
-    if (await this.jobIsClosed(job)) return false;
-    if (await this.jobHasRestrictedLocations(job, config.restrictedLocations)) return false;
-    if (await this.jobHasStrictExcludedWords(job, config.keywords.strictExclude)) return false;
-    if (await this.jobHasStrictIncludeWords(job, config.keywords.strictInclude)) return true;
-    if (await this.jobHasHighSkillsMatch(job)) return true;
-    return await this.checkUndeterminedJob(job);
+    if (await this.jobIsClosed(job)) return [];
+    if (await this.jobHasRestrictedLocations(job, config.restrictedLocations)) return [];
+    if (await this.jobHasStrictExcludedWords(job, config.keywords.strictExclude)) return [];
+
+    const shortlistCriteria = [
+      ...this.getStrictIncludeMatches(job, config.keywords.strictInclude),
+      ...this.getHighSkillsMatchCriteria(job),
+    ];
+
+    if (shortlistCriteria.length) {
+      return Array.from(new Set(shortlistCriteria));
+    }
+
+    return await this.checkUndeterminedJob(job) ? ['Undetermined'] : [];
   }
 
   private async jobIsClosed(job: JobModel): Promise<boolean> {
@@ -345,21 +354,22 @@ export class JobCheckerApp {
     return true;
   }
 
-  private async jobHasStrictIncludeWords(job: JobModel, strictIncludeWords: string[] = []): Promise<boolean> {
+  private getStrictIncludeMatches(job: JobModel, strictIncludeWords: string[] = []): string[] {
     const matchedKeywords = this.findMatchingKeywords(job.fullDescription, strictIncludeWords);
 
-    if (!matchedKeywords.length) return false;
+    if (!matchedKeywords.length) return [];
 
     this.logger.success('Job "%s" has strict include words: %O', job.id, matchedKeywords);
-    return true;
+    return matchedKeywords;
   }
 
-  private async jobHasHighSkillsMatch(job: JobModel): Promise<boolean> {
+  private getHighSkillsMatchCriteria(job: JobModel): string[] {
     if (job.highSkillsMatch) {
       this.logger.success('Job "%s" has high skills match!', job.id);
-      return true;
+      return ['High skills match'];
     }
-    return false;
+
+    return [];
   }
 
   private async skipJob(job: JobModel): Promise<void> {
@@ -381,7 +391,7 @@ export class JobCheckerApp {
     await this.updateJobStatus(job.id, JobStatus.undetermined);
   }
 
-  private showPotentialMatch(job: JobModel): void {
+  private showPotentialMatch(job: JobModel, criteria: string[]): void {
     this.logger.setContext({ phase: 'Potential match found', jobId: job.id });
     this.logger.info('Potential match found!');
     const { id, title, link, location, emails } = job;
@@ -393,6 +403,7 @@ export class JobCheckerApp {
       location,
       emails,
       language: job.language(this.langDetector),
+      criteria,
     });
   }
 
@@ -402,6 +413,7 @@ export class JobCheckerApp {
     await this.jobsSearchPage.markJobForReview(job.id);
     this.notifier.notify();
     await this.jobsSearchPage.waitForJobToBeDismissed(job.id);
+    this.logger.setContext({ phase: 'Resuming scan', jobId: job.id });
     await this.updateJobStatus(job.id, JobStatus.dissmissed);
     this.logger.success('Job "%s" reviewed!', job.title);
   }

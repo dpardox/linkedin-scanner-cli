@@ -25,7 +25,7 @@ export class WinstonAdapter implements LoggerPort {
   };
   private readonly startedAt = new Date();
   private readonly maxRecentLogs = 8;
-  private readonly maxForYouEntries = 3;
+  private readonly maxForYouEntries = 1;
   private context: LoggerContext = {};
 
   private readonly customLevels = {
@@ -170,14 +170,24 @@ export class WinstonAdapter implements LoggerPort {
       `Job: ${this.context.jobId ?? '-'}`,
       `Events: ${this.style(`ok ${this.counts.success}`, 'green')} | ${this.style(`info ${this.counts.info}`, 'blue')} | ${this.style(`warn ${this.counts.warn}`, 'yellow')} | ${this.style(`err ${this.counts.error}`, 'red')}`,
       '',
-      'For you:',
-      ...this.getForYouLines(),
-      '',
-      'Recent activity:',
-      ...this.getLogLines(),
+      ...this.getActivityPanelLines(),
     ];
 
     return `${lines.join('\n')}\n`;
+  }
+
+  private getActivityPanelLines(): string[] {
+    if (this.isManualCheckActive()) {
+      return [
+        'For you:',
+        ...this.getForYouLines(),
+      ];
+    }
+
+    return [
+      'Recent activity:',
+      ...this.getLogLines(),
+    ];
   }
 
   private getForYouLines(): string[] {
@@ -188,23 +198,16 @@ export class WinstonAdapter implements LoggerPort {
     return this.forYouEntries
       .slice()
       .reverse()
-      .flatMap((entry, index, entries) => {
-        const lines = [
-          `  ${this.style(`${index + 1}. ${entry.title}`, 'green')}`,
-          `    Job ID: ${entry.id}`,
-          `    Location: ${entry.location}`,
-          `    Language: ${entry.language}`,
-          `    Emails: ${entry.emails.length ? entry.emails.join(', ') : 'not found'}`,
-          '    Review: pending manual check',
-          `    Link: ${this.style(entry.link, 'blue')}`,
-        ];
-
-        if (index < entries.length - 1) {
-          lines.push('');
-        }
-
-        return lines;
-      });
+      .flatMap(entry => [
+        `  ${this.style(entry.title, 'green')}`,
+        `    Job ID: ${entry.id}`,
+        `    Location: ${entry.location}`,
+        `    Language: ${entry.language}`,
+        `    Criteria: ${entry.criteria.length ? entry.criteria.join(', ') : 'manual review'}`,
+        `    Emails: ${entry.emails.length ? entry.emails.join(', ') : 'not found'}`,
+        '    Review: pending manual check',
+        `    Link: ${this.style(entry.link, 'blue')}`,
+      ]);
   }
 
   private getLogLines(): string[] {
@@ -216,6 +219,10 @@ export class WinstonAdapter implements LoggerPort {
       const badge = this.getBadge(log.level);
       return `  ${this.dim(log.timestamp)} ${badge} ${log.message}`;
     });
+  }
+
+  private isManualCheckActive(): boolean {
+    return this.context.phase === 'Waiting manual review';
   }
 
   private getBadge(level: LogLevel): string {
