@@ -105,4 +105,19 @@ describe('WinstonAdapter', () => {
     expect(screen).toContain('Review: pending manual check');
     expect(screen).not.toContain('Recent activity:');
   });
+
+  test('should render job counters instead of log counters', () => {
+    winstonAdapter.countJob('skipped');
+    winstonAdapter.countJob('found');
+    winstonAdapter.countJob('discarded');
+    winstonAdapter.countJob('undetermined');
+
+    const screen = (winstonAdapter as any).buildScreen();
+    expect(screen).toContain('Jobs:');
+    expect(screen).toContain('skipped 1');
+    expect(screen).toContain('found 1');
+    expect(screen).toContain('discarded 1');
+    expect(screen).toContain('undetermined 1');
+    expect(screen).not.toContain('Events:');
+  });
 });

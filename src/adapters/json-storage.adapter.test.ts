@@ -60,6 +60,12 @@ describe('StorageAdapter', () => {
     expect(record).toBeNull();
   });
 
+  test('Should list all job entries', () => {
+    const record = storageAdapter.findAll();
+    expect(record).toHaveLength(1);
+    expect(record[0]).toEqual(job);
+  });
+
   test('Should update a job entry', () => {
     job.title = 'Updated Job';
     storageAdapter.update(job.id, job);

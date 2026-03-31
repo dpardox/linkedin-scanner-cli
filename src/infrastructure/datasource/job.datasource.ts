@@ -2,6 +2,7 @@ import { JobModel } from '@models/job.model';
 import { JobRepository } from '@repository/job.repository';
 import { JSONStorageAdapter } from '@adapters/json-storage.adapter';
 import { Job } from '@shared/types/job.type';
+import { JobStatus } from '@enums/job-status.enum';
 
 export class JobDatasource extends JobRepository {
 
@@ -15,6 +16,13 @@ export class JobDatasource extends JobRepository {
   public async findById(id: string): Promise<JobModel | null> {
     const job = this.storage.findById(id);
     return job ? new JobModel(job) : null;
+  }
+
+  public async findByStatus(status: JobStatus): Promise<JobModel[]> {
+    return this.storage
+      .findAll()
+      .filter((job) => job.status === status)
+      .map((job) => new JobModel(job));
   }
 
   public async save(data: JobModel): Promise<JobModel> {

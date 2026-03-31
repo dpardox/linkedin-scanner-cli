@@ -58,17 +58,12 @@ export class JSONStorageAdapter<T extends { id: ID }, ID = string> implements St
 
   public findById(id: ID): T | null {
     const db = this.read();
-    const record = db.find((item: any) => item.id === id) as any;
+    const record = db.find((item: any) => item.id === id) as T | undefined;
+    return record ? this.hydrateRecord(record) : null;
+  }
 
-    if (record) {
-      Object.keys(record).forEach((key) => {
-        if (['date', 'createdAt'].includes(key) && typeof record[key] === 'string') {
-          record[key] = new Date(record[key]);
-        }
-      });
-    }
-
-    return record ?? null;
+  public findAll(): T[] {
+    return this.read().map((record) => this.hydrateRecord(record));
   }
 
   public create(data: T): T {
@@ -151,6 +146,18 @@ export class JSONStorageAdapter<T extends { id: ID }, ID = string> implements St
   private defaultTimestampResolver(record: Partial<T>): Date | string | null | undefined {
     const candidate = (record as Record<string, unknown>)?.createdAt ?? (record as Record<string, unknown>)?.date;
     return candidate as Date | string | null | undefined;
+  }
+
+  private hydrateRecord(record: T): T {
+    const hydratedRecord = { ...record } as Record<string, unknown>;
+
+    Object.keys(hydratedRecord).forEach((key) => {
+      if (['date', 'createdAt'].includes(key) && typeof hydratedRecord[key] === 'string') {
+        hydratedRecord[key] = new Date(hydratedRecord[key] as string);
+      }
+    });
+
+    return hydratedRecord as T;
   }
 
   private currentTime(): number {

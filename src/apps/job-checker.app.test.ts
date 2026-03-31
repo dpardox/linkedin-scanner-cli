@@ -377,4 +377,76 @@ describe('JobCheckerApp', () => {
     expect(logger.success).toHaveBeenCalledWith('Job "%s" reviewed!', 'Programador full stack');
   });
 
+  test('should start final undetermined review and dismiss selected jobs', async () => {
+    const logger: LoggerPort = {
+      setContext: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      success: vi.fn(),
+      error: vi.fn(),
+      forYou: vi.fn(),
+      br: vi.fn(),
+    };
+
+    const firstPage = {
+      goto: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const jobRepository = {
+      findByStatus: vi.fn().mockResolvedValue([
+        new JobModel({
+          id: '4386875881',
+          title: 'Angular Developer',
+          location: 'Remote',
+          status: JobStatus.undetermined,
+        }),
+        new JobModel({
+          id: '4386875882',
+          title: 'Frontend Engineer',
+          location: 'Bogota',
+          status: JobStatus.undetermined,
+        }),
+      ]),
+      update: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const notifier = {
+      notify: vi.fn(),
+    };
+
+    const browser = {
+      firstPage: vi.fn().mockResolvedValue(firstPage),
+    };
+
+    const app = new JobCheckerApp(
+      logger,
+      notifier as any,
+      browser as any,
+      {} as any,
+      jobRepository as any,
+    );
+
+    vi.spyOn(app as any, 'promptUndeterminedAction')
+      .mockResolvedValueOnce('dismiss')
+      .mockResolvedValueOnce('keep');
+
+    await (app as any).reviewUndeterminedJobs(true);
+
+    expect(jobRepository.findByStatus).toHaveBeenCalledWith(JobStatus.undetermined);
+    expect(browser.firstPage).toHaveBeenCalledTimes(1);
+    expect(firstPage.goto).toHaveBeenNthCalledWith(1, 'https://www.linkedin.com/jobs/view/4386875881/', {
+      waitUntil: 'domcontentloaded',
+    });
+    expect(firstPage.goto).toHaveBeenNthCalledWith(2, 'https://www.linkedin.com/jobs/view/4386875882/', {
+      waitUntil: 'domcontentloaded',
+    });
+    expect(notifier.notify).toHaveBeenCalledTimes(2);
+    expect(jobRepository.update).toHaveBeenCalledTimes(1);
+    expect(jobRepository.update).toHaveBeenCalledWith('4386875881', {
+      status: JobStatus.dissmissed,
+    });
+    expect(logger.success).toHaveBeenCalledWith('Starting final undetermined review...');
+    expect(logger.success).toHaveBeenCalledWith('Undetermined review finished.');
+  });
+
 });

@@ -46,10 +46,6 @@ Run `npm start` to launch the scanner.
 ## To keep in mind
 
 - The use of method `waitForTimeout` is for preventing the browser overload and simulate human behavior.
+- for you reemplaza el recent activity temporalmente
 
-
-
-
-comenzar por un día, una semana y luego un mes
-al finalizar comenzar a evaluar los unknowns con un input de descarte o enter para seguir evaluando.
-for you reemplaza el recent activity temporalmente
+If `runUndetermined` is enabled, the scanner starts a final review queue for `UNDETERMINED` jobs after the automatic searches finish. For each one, it opens the job and waits for terminal input: type `d` to dismiss it or press Enter to continue with the next unknown.

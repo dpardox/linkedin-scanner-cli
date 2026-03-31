@@ -1,7 +1,7 @@
 import { clearScreenDown, cursorTo } from 'node:readline';
 import { format as formatMessage } from 'node:util';
 import { createLogger, Logger, format, transports } from 'winston';
-import { ForYouEntry, LoggerContext, LoggerPort } from '@ports/logger.port';
+import { ForYouEntry, JobCounter, LoggerContext, LoggerPort } from '@ports/logger.port';
 import { addColors } from 'winston/lib/winston/config';
 
 type LogLevel = 'error' | 'success' | 'warn' | 'info';
@@ -17,11 +17,11 @@ export class WinstonAdapter implements LoggerPort {
   private readonly interactive = Boolean(process.stdout.isTTY);
   private readonly recentLogs: LogEntry[] = [];
   private readonly forYouEntries: ForYouEntry[] = [];
-  private readonly counts: Record<LogLevel, number> = {
-    error: 0,
-    success: 0,
-    warn: 0,
-    info: 0,
+  private readonly jobCounts: Record<JobCounter, number> = {
+    skipped: 0,
+    found: 0,
+    discarded: 0,
+    undetermined: 0,
   };
   private readonly startedAt = new Date();
   private readonly maxRecentLogs = 8;
@@ -94,6 +94,11 @@ export class WinstonAdapter implements LoggerPort {
     this.render();
   }
 
+  public countJob(counter: JobCounter): void {
+    this.jobCounts[counter] += 1;
+    this.render();
+  }
+
   public info(message: string, ...args: unknown[]): void {
     this.logger.info(message, ...args);
     this.track('info', message, args);
@@ -116,7 +121,6 @@ export class WinstonAdapter implements LoggerPort {
 
   public forYou(entry: ForYouEntry): void {
     this.logger.log('success', 'For you "%O"', entry);
-    this.counts.success += 1;
     this.forYouEntries.push(entry);
 
     if (this.forYouEntries.length > this.maxForYouEntries) {
@@ -137,7 +141,6 @@ export class WinstonAdapter implements LoggerPort {
 
   private track(level: LogLevel, message: string, args: unknown[]): void {
     const formattedMessage = this.normalizeMessage(formatMessage(message, ...args));
-    this.counts[level] += 1;
     this.recentLogs.push({
       level,
       message: formattedMessage,
@@ -168,7 +171,7 @@ export class WinstonAdapter implements LoggerPort {
       `Phase: ${this.context.phase ?? '-'}`,
       `Search: ${this.context.searchQuery ?? '-'} | Location: ${this.context.location ?? '-'}`,
       `Job: ${this.context.jobId ?? '-'}`,
-      `Events: ${this.style(`ok ${this.counts.success}`, 'green')} | ${this.style(`info ${this.counts.info}`, 'blue')} | ${this.style(`warn ${this.counts.warn}`, 'yellow')} | ${this.style(`err ${this.counts.error}`, 'red')}`,
+      `Jobs: ${this.style(`skipped ${this.jobCounts.skipped}`, 'yellow')} | ${this.style(`found ${this.jobCounts.found}`, 'green')} | ${this.style(`discarded ${this.jobCounts.discarded}`, 'red')} | ${this.style(`undetermined ${this.jobCounts.undetermined}`, 'cyan')}`,
       '',
       ...this.getActivityPanelLines(),
     ];

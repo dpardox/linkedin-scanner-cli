@@ -6,6 +6,8 @@ export type LoggerContext = {
   jobId?: string;
 };
 
+export type JobCounter = 'skipped' | 'found' | 'discarded' | 'undetermined';
+
 export type ForYouEntry = {
   id: string;
   title: string;
@@ -18,6 +20,7 @@ export type ForYouEntry = {
 
 export interface LoggerPort {
   setContext(context: Partial<LoggerContext>): void;
+  countJob?(counter: JobCounter): void;
   info(...args: unknown[]): void;
   warn(...args: unknown[]): void;
   success(...args: unknown[]): void;

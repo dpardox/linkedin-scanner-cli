@@ -1,6 +1,7 @@
 export interface StoragePort<T = unknown, ID = string> {
   exists: (id: ID) => boolean;
   findById: (id: ID) => T | null;
+  findAll: () => T[];
   create(data: T) : T;
   update: (id: ID, data: Partial<T>) => T | null;
   upsert: (id: ID, data: Partial<T>) => T;

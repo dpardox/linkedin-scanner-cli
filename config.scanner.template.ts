@@ -105,6 +105,6 @@ export const jobSearchConfigs: JobSearchConfig[] = [
 export const contentSearchQuery = '"desarrollador angular"';
 
 /**
- * Enables the second pass that marks undetermined jobs.
+ * Enables the final review queue for undetermined jobs.
  */
 export const runUndetermined = false;

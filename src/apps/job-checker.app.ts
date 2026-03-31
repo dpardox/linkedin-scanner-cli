@@ -1,3 +1,4 @@
+import { createInterface } from 'node:readline/promises';
 import { contentSearchQuery, defaultJobSearchFilters, jobSearchConfigs, runUndetermined } from '@config/main.config';
 import { JobsSearchPage } from '@core/pages/jobs-search.page';
 import { LoginPage } from '@core/pages/login.page';
@@ -27,8 +28,6 @@ export class JobCheckerApp {
   private jobsSearchPage!: JobsSearchPage;
   private loginPage!: LoginPage;
 
-  private showUndetermined: boolean = false;
-
   constructor (
     private readonly logger: LoggerPort,
     private readonly notifier: NotifierPort,
@@ -39,19 +38,8 @@ export class JobCheckerApp {
 
   public async run(): Promise<void> {
     try {
-      this.showUndetermined = false;
       this.logger.setContext({ runMode: 'default', phase: 'Starting run', jobId: undefined });
       await this.tryRun();
-
-      if (runUndetermined) {
-        this.logger.br();
-        this.logger.success('Second run including UNDETERMINED jobs!');
-        this.logger.br();
-
-        this.showUndetermined = true;
-        this.logger.setContext({ runMode: 'undetermined', phase: 'Starting second run', jobId: undefined });
-        await this.tryRun();
-      }
 
       this.logger.setContext({ phase: 'Finished', jobId: undefined });
       this.logger.success('Execution finished!');
@@ -103,10 +91,12 @@ export class JobCheckerApp {
 
     const expandedConfigs = this.expandConfigs(jobSearchConfigs);
     await this.runJobSearches(expandedConfigs);
+    await this.reviewUndeterminedJobs();
 
     const searchResultsContentPage = new SearchResultsContentPage(await this.browser.firstPage(), this.logger);
     this.logger.setContext({
       phase: 'Opening content search',
+      runMode: 'default',
       searchQuery: contentSearchQuery,
       location: undefined,
       jobId: undefined,
@@ -226,21 +216,22 @@ export class JobCheckerApp {
   private async getJobIds(): Promise<string[]> {
     const jobIds = await this.jobsSearchPage.getJobIds();
 
-    const statuses = [JobStatus.pending];
-    this.showUndetermined && statuses.push(JobStatus.undetermined);
-
     const ids: string[] = [];
 
     for (const jobId of jobIds) {
       const job = await this.jobRepository.findById(jobId);
-      if (job && !statuses.includes(job.status)) {
+      if (job && job.status !== JobStatus.pending) {
         this.logger.br();
+        this.logger.countJob?.('skipped');
         this.logger.warn('Job "%s" already processed!', jobId);
         await this.jobsSearchPage.markJobAsSeen(jobId);
         continue;
       }
 
-      if (await this.jobsSearchPage.isEmptyJob(jobId)) continue;
+      if (await this.jobsSearchPage.isEmptyJob(jobId)) {
+        this.logger.countJob?.('skipped');
+        continue;
+      }
 
       ids.push(jobId);
     }
@@ -272,6 +263,7 @@ export class JobCheckerApp {
   private async isDissmissedJob(jobId: string): Promise<boolean> {
     this.logger.info('Checking if job "%s" is dissmissed...', jobId);
     if (await this.jobsSearchPage.isDissmissedJob(jobId)) {
+      this.logger.countJob?.('skipped');
       await this.updateJobStatus(jobId, JobStatus.dissmissed);
       return true;
     };
@@ -281,6 +273,7 @@ export class JobCheckerApp {
   private async isAppliedJob(jobId: string): Promise<boolean> {
     this.logger.info('Checking if job "%s" is applied...', jobId);
     if (await this.jobsSearchPage.isAppliedJob(jobId)) {
+      this.logger.countJob?.('discarded');
       this.logger.warn(`You already applied to job "%s".`, jobId);
       await this.updateJobStatus(jobId, JobStatus.dissmissed);
       return true;
@@ -296,6 +289,7 @@ export class JobCheckerApp {
     const allowedLanguages = languages.length ? languages : ['eng', 'spa'];
 
     if (!allowedLanguages.includes(language)) {
+      this.logger.countJob?.('discarded');
       this.logger.error('Job "%s" has invalid language: %s', job.id, language);
       await this.updateJobStatus(job.id, JobStatus.dissmissed);
       return false;
@@ -325,6 +319,7 @@ export class JobCheckerApp {
 
   private async jobIsClosed(job: JobModel): Promise<boolean> {
     if (job.isClosed) {
+      this.logger.countJob?.('discarded');
       this.logger.error('Job "%s" is closed!', job.id);
       await this.skipJob(job);
       return true;
@@ -337,6 +332,7 @@ export class JobCheckerApp {
     const hasRestrictedLocations = restrictedLocations.some(x => location?.includes(normalize(x)));
 
     if (hasRestrictedLocations) {
+      this.logger.countJob?.('discarded');
       this.logger.error('Job "%s" has restricted location: %s', job.id, job.location);
       await this.skipJob(job);
       return true;
@@ -349,6 +345,7 @@ export class JobCheckerApp {
 
     if (!matchedKeywords.length) return false;
 
+    this.logger.countJob?.('discarded');
     this.logger.error('Job "%s" has strict excluded words: %O', job.id, matchedKeywords);
     await this.skipJob(job);
     return true;
@@ -379,20 +376,21 @@ export class JobCheckerApp {
   }
 
   private async checkUndeterminedJob(job: JobModel): Promise<boolean> {
-    this.logger.info('Checking if job "%s" is a undetermined...', job.id);
-    if (!this.showUndetermined) await this.markJobAsUndetermined(job);
-    this.showUndetermined && this.logger.warn('Job "%s" is undetermined!', job.id);
-    return this.showUndetermined;
+    this.logger.info('Checking if job "%s" is undetermined...', job.id);
+    await this.markJobAsUndetermined(job);
+    return false;
   }
 
   private async markJobAsUndetermined(job: JobModel): Promise<void> {
     this.logger.setContext({ phase: 'Marking undetermined', jobId: job.id });
+    this.logger.countJob?.('undetermined');
     this.logger.warn('Marking job "%s" as undetermined...', job.id);
     await this.updateJobStatus(job.id, JobStatus.undetermined);
   }
 
   private showPotentialMatch(job: JobModel, criteria: string[]): void {
     this.logger.setContext({ phase: 'Potential match found', jobId: job.id });
+    this.logger.countJob?.('found');
     this.logger.info('Potential match found!');
     const { id, title, link, location, emails } = job;
 
@@ -420,6 +418,85 @@ export class JobCheckerApp {
 
   private async updateJobStatus(jobId: string, status: JobStatus): Promise<void> {
     await this.jobRepository.update(jobId, { status });
+  }
+
+  private async reviewUndeterminedJobs(enabled = runUndetermined): Promise<void> {
+    if (!enabled) return;
+
+    const jobs = await this.jobRepository.findByStatus(JobStatus.undetermined);
+
+    if (!jobs.length) {
+      this.logger.info('No undetermined jobs pending review.');
+      return;
+    }
+
+    this.logger.br();
+    this.logger.success('Starting final undetermined review...');
+
+    const page = await this.browser.firstPage();
+
+    for (const job of jobs) {
+      this.logger.setContext({
+        runMode: 'undetermined',
+        phase: 'Reviewing undetermined job',
+        searchQuery: undefined,
+        location: undefined,
+        jobId: job.id,
+      });
+      this.logger.info('Opening undetermined job "%s"...', job.id);
+      await page.goto(job.link, { waitUntil: 'domcontentloaded' });
+      this.notifier.notify();
+
+      const action = await this.promptUndeterminedAction(job);
+
+      if (action === 'dismiss') {
+        await this.updateJobStatus(job.id, JobStatus.dissmissed);
+        this.logger.success('Job "%s" dismissed from undetermined queue.', job.title);
+        continue;
+      }
+
+      this.logger.info('Keeping job "%s" in undetermined queue.', job.id);
+    }
+
+    this.logger.setContext({
+      runMode: 'default',
+      phase: 'Undetermined review completed',
+      searchQuery: undefined,
+      location: undefined,
+      jobId: undefined,
+    });
+    this.logger.success('Undetermined review finished.');
+  }
+
+  private async promptUndeterminedAction(job: JobModel): Promise<'dismiss' | 'keep'> {
+    if (!process.stdin.isTTY || !process.stdout.isTTY) {
+      return 'keep';
+    }
+
+    const prompt = [
+      '',
+      `Unknown job: ${job.title || job.id}`,
+      `Location: ${job.location || '-'}`,
+      `Link: ${job.link}`,
+      'Escribe "d" para descartarlo o presiona Enter para seguir con el siguiente unknown.',
+      '> ',
+    ].join('\n');
+
+    process.stdout.write('\x1b[?25h');
+
+    const readline = createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    try {
+      const answer = await readline.question(prompt);
+      const normalizedAnswer = normalize(answer);
+      return ['d', 'descartar', 'dismiss', 'discard'].includes(normalizedAnswer) ? 'dismiss' : 'keep';
+    } finally {
+      readline.close();
+      process.stdout.write('\x1b[?25l');
+    }
   }
 
   private findMatchingKeywords(content: string, keywords: string[] = []): string[] {
