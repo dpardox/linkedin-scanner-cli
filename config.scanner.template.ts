@@ -2,6 +2,7 @@ import { Location } from '@enums/location.enum';
 import { WorkType } from '@enums/work-type.enum';
 import { Filters } from '@shared/types/filters.type';
 import { JobSearchConfig } from '@shared/types/job-search-config.type';
+import { angularSkillKeywords, createKeywords, dotnetSkillKeywords, englishSkillKeywords } from '@skills';
 
 const defaultLanguages = ['eng', 'spa'];
 
@@ -66,24 +67,26 @@ export const jobSearchConfigs: JobSearchConfig[] = [
       easyApply: true,
     },
 
-    keywords: {
+    keywords: createKeywords({
       /**
-       * Required keywords that must appear in the job description.
-       *
-       * If none of these keywords are present, the job will be excluded.
-       *
-       * Example: ['angular']
+       * Reusable skills from src/skills that can be added to either side
+       * of the search without duplicating keyword lists.
        */
-      strictInclude: ['angular'],
+      includeSkills: [ angularSkillKeywords ],
+      excludeSkills: [ englishSkillKeywords, dotnetSkillKeywords ],
 
       /**
-       * Forbidden keywords — if any of these are found in the job description,
-       * the job will be discarded.
+       * You can still add one-off keywords directly when needed.
        *
+       * Example: ['frontend']
+       */
+      includeKeywords: [],
+
+      /**
        * Example: ['strong proficiency in react']
        */
-      strictExclude: [],
-    },
+      excludeKeywords: [],
+    }),
 
     /**
      * ISO 639-3 language codes detected by franc.

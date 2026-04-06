@@ -27,6 +27,8 @@ If LinkedIn closes the session, delete that file, run `npm start`, and log in ma
 
 Copy the `config.scanner.template.ts` file to `config.scanner.ts` and adjust the configuration as needed.
 
+Reusable skill keyword groups live in `src/skills`. You can compose them into `strictInclude` and `strictExclude` with `createKeywords(...)`, and still add one-off keywords when a search needs something custom.
+
 The scanner automatically runs each configured search in this order:
 
 1. Last day

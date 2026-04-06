@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@apps': path.resolve(rootDir, 'src/apps'),
+      '@skills': path.resolve(rootDir, 'src/skills'),
       '@keywords': path.resolve(rootDir, 'src/config/keywords'),
       '@config': path.resolve(rootDir, 'src/config'),
       '@models': path.resolve(rootDir, 'src/core/models'),

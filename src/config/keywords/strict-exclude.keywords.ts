@@ -8,219 +8,225 @@ import { USCitizenshipKeywords } from './us-citizenship.keywords';
 import { spainCitizenshipKeywords } from './spain-citizenship.keywords';
 import { golangKeywords } from './golang.keywords';
 import { SAPKeywords } from './sap.keywords';
+import { mergeKeywordGroups } from '@skills';
 
-export const strictExcludeKeywords = [
-  ...fluentEnglishKeywords,
-  ...dotnetKeywords,
-  ...SAPKeywords,
-  ...javaKeywords,
-  ...pythonKeywords,
-  ...golangKeywords,
-  ...reactKeywords,
-  ...CMSKeywords,
-  ...USCitizenshipKeywords,
-  ...spainCitizenshipKeywords,
+export const additionalStrictExcludeKeywords = mergeKeywordGroups(
+  SAPKeywords,
+  javaKeywords,
+  pythonKeywords,
+  golangKeywords,
+  reactKeywords,
+  CMSKeywords,
+  USCitizenshipKeywords,
+  spainCitizenshipKeywords,
+  [
+    // citizenship
+    'Postulación válida solamente para Chile y Perú',
+    'this role remotely from any EU country',
+    'Australian Citizen only',
+    'Solo Buenos Aires',
+    'Europe-based',
 
-  // citizenship
-  'Postulación válida solamente para Chile y Perú',
-  'this role remotely from any EU country',
-  'Australian Citizen only',
-  'Solo Buenos Aires',
-  'Europe-based',
+    // companies
+    'Jobot Consulting',
+    'EPAM',
+    'CI&T',
 
-  // companies
-  'Jobot Consulting',
-  'EPAM',
-  'CI&T',
+    // support
+    'Software Engineer in Support',
+    'Customer Support Technician',
 
-  // support
-  'Software Engineer in Support',
-  'Customer Support Technician',
+    // backend
+    'años de experiencia con Symfony / PHP',
+    'Full Stack Developer Backend Focus',
+    'Experiencia sólida en Symfony',
+    'Senior Back-End Engineer',
+    'Developer Sr. Backend',
+    'Desarrollador Backend',
+    'strong backend focus',
+    'Back End Developer',
+    'Backend Developer',
+    'Backend Engineer',
+    'Backend Focused',
 
-  // backend
-  'años de experiencia con Symfony / PHP',
-  'Full Stack Developer Backend Focus',
-  'Experiencia sólida en Symfony',
-  'Senior Back-End Engineer',
-  'Developer Sr. Backend',
-  'Desarrollador Backend',
-  'strong backend focus',
-  'Back End Developer',
-  'Backend Developer',
-  'Backend Engineer',
-  'Backend Focused',
+    // practices
+    'Buscamos estudiantes avanzados o recién graduados',
+    'Practicante de desarrollo',
 
-  // practices
-  'Buscamos estudiantes avanzados o recién graduados',
-  'Practicante de desarrollo',
+    //
+    'ServiceNow',
 
-  //
-  'ServiceNow',
+    // QA
+    'Senior QA Automation Engineer',
+    'QA Engineer',
 
-  // QA
-  'Senior QA Automation Engineer',
-  'QA Engineer',
+    // Salesforce
+    'Strong expertise in Salesforce Sales Cloud',
+    'experience with Salesforce',
+    'Desarrollador Salesforce',
+    'Arquitecto de Salesforce',
+    'Salesforce Developer',
 
-  // Salesforce
-  'Strong expertise in Salesforce Sales Cloud',
-  'experience with Salesforce',
-  'Desarrollador Salesforce',
-  'Arquitecto de Salesforce',
-  'Salesforce Developer',
+    // Ruby on rails
+    'Experiencia Desarrollo Ruby',
+    'Ruby highly preferred',
+    'experience with Ruby',
+    'ruby on rails',
 
-  // Ruby on rails
-  'Experiencia Desarrollo Ruby',
-  'Ruby highly preferred',
-  'experience with Ruby',
-  'ruby on rails',
+    //
+    'Shelf Digital Architect',
 
-  //
-  'Shelf Digital Architect',
+    //
+    'años de experiencia en DMP, CDP',
 
-  //
-  'años de experiencia en DMP, CDP',
+    // flutter
+    'experience in mobile development using Flutter',
 
-  // flutter
-  'experience in mobile development using Flutter',
+    // elixir
+    'Backend Engineer working with Elixir',
 
-  // elixir
-  'Backend Engineer working with Elixir',
+    // crypto
+    'Past experience in building or managing crypto wallets with DeFi features',
 
-  // crypto
-  'Past experience in building or managing crypto wallets with DeFi features',
+    // vue
+    'Strong hands-on experience with Vue',
+    'Indispensable experiencia en VUE',
+    'años trabajando con Vue.js',
+    'Vue as primary skills',
+    'frontend en Vue.js',
+    'Programador VueJS',
+    'Vue.js UI Lead',
+    'Vue Developer',
+    'Lead Vue.js',
+    'Lead VUEJS',
+    'Vue.js',
+    'Vue 3',
 
-  // vue
-  'Strong hands-on experience with Vue',
-  'Indispensable experiencia en VUE',
-  'años trabajando con Vue.js',
-  'Vue as primary skills',
-  'frontend en Vue.js',
-  'Programador VueJS',
-  'Vue.js UI Lead',
-  'Vue Developer',
-  'Lead Vue.js',
-  'Lead VUEJS',
-  'Vue.js',
-  'Vue 3',
+    //
+    'Administer and optimize Apache Kafka clusters',
 
-  //
-  'Administer and optimize Apache Kafka clusters',
+    //
+    'Experiencia demostrable en FastAPI',
+    'FastAPI, Django o Flask',
 
-  //
-  'Experiencia demostrable en FastAPI',
-  'FastAPI, Django o Flask',
+    // PM
+    'Project Manager - Sr. Specialist Developer',
+    'experiencia como Project Manager',
 
-  // PM
-  'Project Manager - Sr. Specialist Developer',
-  'experiencia como Project Manager',
+    //
+    'expert@ en la solución ITSM de Helix',
 
-  //
-  'expert@ en la solución ITSM de Helix',
+    //
+    '(Prácticas no remuneradas)',
 
-  //
-  '(Prácticas no remuneradas)',
+    // Cobol
+    'Programador Cobol',
 
-  // Cobol
-  'Programador Cobol',
+    // Adobe Experience Manager AEM
+    'años de experiencia trabajando con Adobe Experience Manager',
+    'Adobe Experience Manager (AEM)',
+    'Desarrollador AEM',
+    'Adobe AEM',
 
-  // Adobe Experience Manager AEM
-  'años de experiencia trabajando con Adobe Experience Manager',
-  'Adobe Experience Manager (AEM)',
-  'Desarrollador AEM',
-  'Adobe AEM',
+    // One Identity Manager
+    'One Identity Manager Senior',
 
-  // One Identity Manager
-  'One Identity Manager Senior',
+    // Cloud
+    'years of hands-on AWS experience',
+    'CLOUD ENGINEERING',
 
-  // Cloud
-  'years of hands-on AWS experience',
-  'CLOUD ENGINEERING',
+    // oracle
+    'Oracle Developer (Forms y Reports)',
+    'Oracle Hyperion Planning',
 
-  // oracle
-  'Oracle Developer (Forms y Reports)',
-  'Oracle Hyperion Planning',
+    // medix
+    'years of development experience in Medix',
 
-  // medix
-  'years of development experience in Medix',
+    // mova
+    'framework MOVA',
 
-  // mova
-  'framework MOVA',
+    // c++
+    'C++ development skills',
+    'experienced C++',
+    'Desarrollador C#',
 
-  // c++
-  'C++ development skills',
-  'experienced C++',
-  'Desarrollador C#',
+    // genexus
+    'Desarrollador Genexus',
 
-  // genexus
-  'Desarrollador Genexus',
+    // perl
+    'Perl Developer',
 
-  // perl
-  'Perl Developer',
+    // visual foxpro
+    'Visual FoxPro',
 
-  // visual foxpro
-  'Visual FoxPro',
+    // AI
+    'Generative AI Engineer',
 
-  // AI
-  'Generative AI Engineer',
+    // shopify
+    'Shopify Developer',
 
-  // shopify
-  'Shopify Developer',
+    // electron
+    'Electron Developer',
 
-  // electron
-  'Electron Developer',
+    // bi
+    'BI Report Engineer',
+    'utilizando herramientas como en Power BI',
 
-  // bi
-  'BI Report Engineer',
-  'utilizando herramientas como en Power BI',
+    // codeigniter
+    'Experto en CodeIgniter',
 
-  // codeigniter
-  'Experto en CodeIgniter',
+    // devops
+    'DevOps Engineer',
 
-  // devops
-  'DevOps Engineer',
+    // sales
+    'Sales Representative',
 
-  // sales
-  'Sales Representative',
+    //
+    'la colaboración es una piedra angular',
 
-  //
-  'la colaboración es una piedra angular',
+    // unpaid
+    'No habrá un sueldo fijo',
+    'Voluntary Unpaid',
 
-  // unpaid
-  'No habrá un sueldo fijo',
-  'Voluntary Unpaid',
+    // moodle
+    ' Moodle themes',
 
-  // moodle
-  ' Moodle themes',
+    // marketing
+    'Proficiency in marketing tools',
 
-  // marketing
-  'Proficiency in marketing tools',
+    // cells
+    'Experiencia en desarrollo con Cells',
 
-  // cells
-  'Experiencia en desarrollo con Cells',
+    //
+    'experience with ThingWorx Navigate',
 
-  //
-  'experience with ThingWorx Navigate',
+    // rpg
+    'experiencia sólida en RPG',
 
-  // rpg
-  'experiencia sólida en RPG',
+    // appian
+    'arquitectura de soluciones Appian',
+    'Appian Expertise Required',
 
-  // appian
-  'arquitectura de soluciones Appian',
-  'Appian Expertise Required',
+    // zapier
+    'Experience with Zapier',
 
-  // zapier
-  'Experience with Zapier',
+    // scrum master
+    'Scrum Master',
 
-  // scrum master
-  'Scrum Master',
+    // junior
+    'Ingeniero de software júnior',
+    'Junior Developer',
 
-  // junior
-  'Ingeniero de software júnior',
-  'Junior Developer',
+    // azure
+    'Experience working with Azure environment',
 
-  // azure
-  'Experience working with Azure environment',
+    //  jboss
+    'basados en JBOSS',
+  ],
+);
 
-  //  jboss
-  'basados en JBOSS',
-].filter(Boolean);
+export const strictExcludeKeywords = mergeKeywordGroups(
+  fluentEnglishKeywords,
+  dotnetKeywords,
+  additionalStrictExcludeKeywords,
+);
