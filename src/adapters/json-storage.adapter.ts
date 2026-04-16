@@ -27,7 +27,7 @@ export class JSONStorageAdapter<T extends { id: ID }, ID = string> implements St
   }
 
   public get path(): string {
-    return path.join(this.dir, `${this.entity}.db.json`);
+    return path.join(this.dir, `${this.entity}.db.jsonl`);
   }
 
   private connect(): void {
@@ -36,19 +36,28 @@ export class JSONStorageAdapter<T extends { id: ID }, ID = string> implements St
     }
 
     if (!fs.existsSync(this.path)) {
-      fs.writeFileSync(this.path, JSON.stringify([]), 'utf-8');
+      fs.writeFileSync(this.path, '', 'utf-8');
     }
 
     this.cleanExpiredRecords();
   }
 
   private read(): T[] {
-    const data = fs.readFileSync(this.path, 'utf-8');
-    return JSON.parse(data);
+    const data = fs.readFileSync(this.path, 'utf-8').trim();
+    if (!data) return [];
+
+    return data
+      .split('\n')
+      .filter((line) => line.trim().length > 0)
+      .map((line) => JSON.parse(line) as T);
   }
 
   private write(data: T[]): void {
-    fs.writeFileSync(this.path, JSON.stringify(data, null, 2), 'utf-8');
+    const content = data
+      .map((record) => JSON.stringify(record))
+      .join('\n');
+
+    fs.writeFileSync(this.path, content ? `${content}\n` : '', 'utf-8');
   }
 
   public exists(id: ID): boolean {

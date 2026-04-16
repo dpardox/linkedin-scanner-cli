@@ -6,6 +6,16 @@ import path from 'path';
 import { Job } from '../shared/types/job.type';
 import { JobStatus } from '../shared/enums/job-status.enum';
 
+function readJsonLines<T>(filePath: string): T[] {
+  const data = fs.readFileSync(filePath, 'utf-8').trim();
+  if (!data) return [];
+
+  return data
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map((line) => JSON.parse(line) as T);
+}
+
 describe('StorageAdapter', () => {
 
   let storageAdapter: JSONStorageAdapter<Job, string>;
@@ -39,8 +49,7 @@ describe('StorageAdapter', () => {
   test('Should create a first job entry', () => {
     storageAdapter.create(job);
 
-    const data = fs.readFileSync(storageAdapter.path, 'utf-8');
-    const record = JSON.parse(data).at(-1);
+    const record = readJsonLines<Job>(storageAdapter.path).at(-1);
     expect({ ...record, createdAt: new Date(record.createdAt) }).toEqual(job);
   });
 
@@ -112,7 +121,7 @@ describe('StorageAdapter', () => {
 
   test('Should clean records older than configured TTL during initialization', () => {
     const entity = `cleanup-${Date.now()}`;
-    const filePath = path.join(tempDir, `${entity}.db.json`);
+    const filePath = path.join(tempDir, `${entity}.db.jsonl`);
     const now = new Date('2024-02-01T00:00:00.000Z');
     const staleRecord: Job = {
       ...job,
@@ -125,7 +134,7 @@ describe('StorageAdapter', () => {
       createdAt: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000),
     };
 
-    fs.writeFileSync(filePath, JSON.stringify([staleRecord, recentRecord], null, 2));
+    fs.writeFileSync(filePath, `${JSON.stringify(staleRecord)}\n${JSON.stringify(recentRecord)}\n`);
 
     const cleanupAdapter = new JSONStorageAdapter<Job, string>(entity, {
       baseDir: tempDir,
@@ -133,7 +142,7 @@ describe('StorageAdapter', () => {
       now: () => now,
     });
 
-    const data = JSON.parse(fs.readFileSync(cleanupAdapter.path, 'utf-8')) as Job[];
+    const data = readJsonLines<Job>(cleanupAdapter.path);
     expect(data).toHaveLength(1);
     expect(data[0]?.id).toBe(recentRecord.id);
     expect(cleanupAdapter.findById(staleRecord.id)).toBeNull();
@@ -143,17 +152,17 @@ describe('StorageAdapter', () => {
     type MinimalRecord = { id: string; value: string };
 
     const entity = `cleanup-missing-${Date.now()}`;
-    const filePath = path.join(tempDir, `${entity}.db.json`);
+    const filePath = path.join(tempDir, `${entity}.db.jsonl`);
     const record: MinimalRecord = { id: 'no-date', value: 'test' };
 
-    fs.writeFileSync(filePath, JSON.stringify([record], null, 2));
+    fs.writeFileSync(filePath, `${JSON.stringify(record)}\n`);
 
     const cleanupAdapter = new JSONStorageAdapter<MinimalRecord, string>(entity, {
       baseDir: tempDir,
       ttlDays: 30,
     });
 
-    const data = JSON.parse(fs.readFileSync(cleanupAdapter.path, 'utf-8')) as MinimalRecord[];
+    const data = readJsonLines<MinimalRecord>(cleanupAdapter.path);
     expect(data).toHaveLength(1);
     expect(cleanupAdapter.findById(record.id)?.id).toBe(record.id);
   });
