@@ -17,6 +17,7 @@ export default defineConfig({
       '@infrastructure': path.resolve(rootDir, 'src/infrastructure'),
       '@ports': path.resolve(rootDir, 'src/ports'),
       '@adapters': path.resolve(rootDir, 'src/adapters'),
+      '@tui': path.resolve(rootDir, 'src/tui'),
       '@enums': path.resolve(rootDir, 'src/shared/enums'),
       '@utils': path.resolve(rootDir, 'src/shared/utils'),
       '@shared': path.resolve(rootDir, 'src/shared'),

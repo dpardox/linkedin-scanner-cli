@@ -1,32 +1,35 @@
-import { clearScreenDown, cursorTo } from 'node:readline';
 import { format as formatMessage } from 'node:util';
+import { createInterface } from 'node:readline/promises';
+import React from 'react';
+import { render } from 'ink';
 import { createLogger, Logger, format, transports } from 'winston';
-import { ForYouEntry, JobCounter, LoggerContext, LoggerPort } from '@ports/logger.port';
 import { addColors } from 'winston/lib/winston/config';
+import { PersistedJobRuleManager } from '@config/rules';
+import { InteractionPort } from '@ports/interaction.port';
+import { ForYouEntry, JobCounter, LoggerContext, LoggerPort } from '@ports/logger.port';
+import { ExecutionOptions } from '@shared/types/execution-options.type';
+import { ManualReviewEntry } from '@shared/types/manual-review-entry.type';
+import { UndeterminedQueueEntry } from '@shared/types/undetermined-queue-entry.type';
+import { InkTerminalApp } from '@tui/terminal-app';
+import { TerminalSessionStore } from '@tui/terminal-session.store';
 
 type LogLevel = 'error' | 'success' | 'warn' | 'info';
-type LogEntry = {
-  level: LogLevel;
-  message: string;
-  timestamp: string;
+
+type WinstonAdapterOptions = {
+  ruleManager?: PersistedJobRuleManager;
 };
 
-export class WinstonAdapter implements LoggerPort {
+export class WinstonAdapter implements LoggerPort, InteractionPort {
+
+  private static readonly showUnknownJobsQuestion = 'Show unknown jobs? (y/N) ';
+  private static readonly showUnknownJobsAnswerYes = 'y';
+  private static readonly showUnknownJobsAnswerNo = 'n';
 
   private readonly logger: Logger;
   private readonly interactive = Boolean(process.stdout.isTTY);
-  private readonly recentLogs: LogEntry[] = [];
-  private readonly forYouEntries: ForYouEntry[] = [];
-  private readonly jobCounts: Record<JobCounter, number> = {
-    skipped: 0,
-    found: 0,
-    discarded: 0,
-    undetermined: 0,
-  };
-  private readonly startedAt = new Date();
-  private readonly maxRecentLogs = 8;
-  private readonly maxForYouEntries = 1;
-  private context: LoggerContext = {};
+  private readonly interactiveInput = Boolean(process.stdin.isTTY && process.stdout.isTTY);
+  private readonly terminalSessionStore: TerminalSessionStore;
+  private inkRenderer?: ReturnType<typeof render>;
 
   private readonly customLevels = {
     levels: {
@@ -43,9 +46,81 @@ export class WinstonAdapter implements LoggerPort {
     }
   };
 
-  constructor () {
+  constructor (options: WinstonAdapterOptions = {}) {
     addColors(this.customLevels.colors);
 
+    this.terminalSessionStore = new TerminalSessionStore(this.interactiveInput, {
+      ruleManager: options.ruleManager,
+    });
+    this.logger = this.createWinstonLogger();
+
+    if (this.interactive) {
+      process.once('exit', this.restoreTerminal);
+      process.once('SIGINT', this.handleInterrupt);
+    }
+  }
+
+  public setContext(context: Partial<LoggerContext>): void {
+    this.terminalSessionStore.setContext(context);
+  }
+
+  public countJob(counter: JobCounter): void {
+    this.terminalSessionStore.countJob(counter);
+  }
+
+  public info(message: string, ...args: unknown[]): void {
+    this.logger.info(message, ...args);
+    this.track('info', message, args);
+  }
+
+  public warn(message: string, ...args: unknown[]): void {
+    this.logger.warn(message, ...args);
+    this.track('warn', message, args);
+  }
+
+  public error(message: string, ...args: unknown[]): void {
+    this.logger.error(message, ...args);
+    this.track('error', message, args);
+  }
+
+  public success(message: string, ...args: unknown[]): void {
+    this.logger.log('success', message, ...args);
+    this.track('success', message, args);
+  }
+
+  public forYou(entry: ForYouEntry): void {
+    this.logger.log('success', 'For you "%O"', entry);
+    this.terminalSessionStore.addForYouEntry(entry);
+  }
+
+  public trackUndetermined(entry: UndeterminedQueueEntry): void {
+    this.terminalSessionStore.trackUndeterminedEntry(entry);
+  }
+
+  public br(): void {
+    if (this.interactive) {
+      return;
+    }
+
+    process.stdout.write('\n');
+  }
+
+  public async selectExecutionOptions(defaultOptions: ExecutionOptions): Promise<ExecutionOptions> {
+    const executionOptions = await this.askExecutionOptions(defaultOptions);
+    this.ensureInkRenderer();
+    return executionOptions;
+  }
+
+  public startManualReview(review: ManualReviewEntry): void {
+    this.ensureInkRenderer();
+    this.terminalSessionStore.startManualReview(review);
+  }
+
+  public finishManualReview(jobId: string): void {
+    this.terminalSessionStore.finishManualReview(jobId);
+  }
+
+  private createWinstonLogger(): Logger {
     const loggerTransports: Array<transports.ConsoleTransportInstance | transports.FileTransportInstance> = [
       new transports.File({
         filename: 'logs/combined.log'
@@ -67,7 +142,7 @@ export class WinstonAdapter implements LoggerPort {
       );
     }
 
-    this.logger = createLogger({
+    return createLogger({
       levels: this.customLevels.levels,
       level: 'info',
       format: format.combine(
@@ -77,205 +152,87 @@ export class WinstonAdapter implements LoggerPort {
       ),
       transports: loggerTransports,
     });
-
-    if (this.interactive) {
-      process.stdout.write('\x1b[?25l');
-      process.once('exit', this.restoreTerminal);
-      process.once('SIGINT', this.handleInterrupt);
-      this.render();
-    }
   }
 
-  public setContext(context: Partial<LoggerContext>): void {
-    this.context = {
-      ...this.context,
-      ...context,
-    };
-    this.render();
-  }
-
-  public countJob(counter: JobCounter): void {
-    this.jobCounts[counter] += 1;
-    this.render();
-  }
-
-  public info(message: string, ...args: unknown[]): void {
-    this.logger.info(message, ...args);
-    this.track('info', message, args);
-  }
-
-  public warn(message: string, ...args: unknown[]): void {
-    this.logger.warn(message,  ...args);
-    this.track('warn', message, args);
-  }
-
-  public error(message: string, ...args: unknown[]): void {
-    this.logger.error(message, ...args);
-    this.track('error', message, args);
-  }
-
-  public success(message: string, ...args: unknown[]): void {
-    this.logger.log('success', message, ...args);
-    this.track('success', message, args);
-  }
-
-  public forYou(entry: ForYouEntry): void {
-    this.logger.log('success', 'For you "%O"', entry);
-    this.forYouEntries.push(entry);
-
-    if (this.forYouEntries.length > this.maxForYouEntries) {
-      this.forYouEntries.shift();
-    }
-
-    this.render();
-  }
-
-  public br(): void {
+  private createInkRenderer(): ReturnType<typeof render> | undefined {
     if (!this.interactive) {
-      process.stdout.write('\n');
+      return undefined;
+    }
+
+    return render(React.createElement(InkTerminalApp, {
+      store: this.terminalSessionStore,
+    }), {
+      exitOnCtrlC: false,
+    });
+  }
+
+  private ensureInkRenderer(): void {
+    if (!this.interactive || this.inkRenderer) {
       return;
     }
 
-    this.render();
+    this.inkRenderer = this.createInkRenderer();
+    this.resumeInputForInkRenderer();
+  }
+
+  private resumeInputForInkRenderer(): void {
+    if (!this.interactiveInput) {
+      return;
+    }
+
+    process.stdin.resume();
+  }
+
+  private async askExecutionOptions(defaultOptions: ExecutionOptions): Promise<ExecutionOptions> {
+    if (!this.interactiveInput) {
+      return defaultOptions;
+    }
+
+    return {
+      ...defaultOptions,
+      showUnknownJobs: await this.askShowUnknownJobs(defaultOptions.showUnknownJobs),
+    };
+  }
+
+  private async askShowUnknownJobs(defaultShowUnknownJobs: boolean): Promise<boolean> {
+    const readline = createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    try {
+      const answer = await readline.question(WinstonAdapter.showUnknownJobsQuestion);
+      return this.parseShowUnknownJobsAnswer(answer, defaultShowUnknownJobs);
+    } finally {
+      readline.close();
+    }
+  }
+
+  private parseShowUnknownJobsAnswer(answer: string, defaultShowUnknownJobs: boolean): boolean {
+    const normalizedAnswer = answer.trim().toLowerCase();
+
+    if (normalizedAnswer === WinstonAdapter.showUnknownJobsAnswerYes) {
+      return true;
+    }
+
+    if (normalizedAnswer === WinstonAdapter.showUnknownJobsAnswerNo) {
+      return false;
+    }
+
+    return defaultShowUnknownJobs;
   }
 
   private track(level: LogLevel, message: string, args: unknown[]): void {
-    const formattedMessage = this.normalizeMessage(formatMessage(message, ...args));
-    this.recentLogs.push({
-      level,
-      message: formattedMessage,
-      timestamp: new Date().toLocaleTimeString('en-US', {
-        hour12: false,
-      }),
-    });
-
-    if (this.recentLogs.length > this.maxRecentLogs) {
-      this.recentLogs.shift();
-    }
-
-    this.render();
-  }
-
-  private render(): void {
-    if (!this.interactive) return;
-
-    cursorTo(process.stdout, 0, 0);
-    clearScreenDown(process.stdout);
-    process.stdout.write(this.buildScreen());
-  }
-
-  private buildScreen(): string {
-    const lines = [
-      this.style('LinkedIn Scanner TUI', 'cyan'),
-      this.dim(`Elapsed: ${this.getElapsedTime()} | Run: ${this.context.runMode ?? 'default'}`),
-      `Phase: ${this.context.phase ?? '-'}`,
-      `Search: ${this.context.searchQuery ?? '-'} | Location: ${this.context.location ?? '-'}`,
-      `Job: ${this.context.jobId ?? '-'}`,
-      `Jobs: ${this.style(`skipped ${this.jobCounts.skipped}`, 'yellow')} | ${this.style(`found ${this.jobCounts.found}`, 'green')} | ${this.style(`discarded ${this.jobCounts.discarded}`, 'red')} | ${this.style(`undetermined ${this.jobCounts.undetermined}`, 'cyan')}`,
-      '',
-      ...this.getActivityPanelLines(),
-    ];
-
-    return `${lines.join('\n')}\n`;
-  }
-
-  private getActivityPanelLines(): string[] {
-    if (this.isManualCheckActive()) {
-      return [
-        'For you:',
-        ...this.getForYouLines(),
-      ];
-    }
-
-    return [
-      'Recent activity:',
-      ...this.getLogLines(),
-    ];
-  }
-
-  private getForYouLines(): string[] {
-    if (!this.forYouEntries.length) {
-      return [this.dim('  no jobs shortlisted yet')];
-    }
-
-    return this.forYouEntries
-      .slice()
-      .reverse()
-      .flatMap(entry => [
-        `  ${this.style(entry.title, 'green')}`,
-        `    Job ID: ${entry.id}`,
-        `    Location: ${entry.location}`,
-        `    Language: ${entry.language}`,
-        `    Criteria: ${entry.criteria.length ? entry.criteria.join(', ') : 'manual review'}`,
-        `    Emails: ${entry.emails.length ? entry.emails.join(', ') : 'not found'}`,
-        '    Review: pending manual check',
-        `    Link: ${this.style(entry.link, 'blue')}`,
-      ]);
-  }
-
-  private getLogLines(): string[] {
-    if (!this.recentLogs.length) {
-      return [this.dim('  waiting for events...')];
-    }
-
-    return this.recentLogs.map(log => {
-      const badge = this.getBadge(log.level);
-      return `  ${this.dim(log.timestamp)} ${badge} ${log.message}`;
-    });
-  }
-
-  private isManualCheckActive(): boolean {
-    return this.context.phase === 'Waiting manual review';
-  }
-
-  private getBadge(level: LogLevel): string {
-    const labels: Record<LogLevel, string> = {
-      error: 'ERR',
-      success: 'OK ',
-      warn: 'WRN',
-      info: 'INF',
-    };
-
-    const colors: Record<LogLevel, 'red' | 'green' | 'yellow' | 'blue'> = {
-      error: 'red',
-      success: 'green',
-      warn: 'yellow',
-      info: 'blue',
-    };
-
-    return this.style(`[${labels[level]}]`, colors[level]);
-  }
-
-  private getElapsedTime(): string {
-    const elapsedSeconds = Math.max(0, Math.floor((Date.now() - this.startedAt.getTime()) / 1000));
-    const minutes = Math.floor(elapsedSeconds / 60).toString().padStart(2, '0');
-    const seconds = (elapsedSeconds % 60).toString().padStart(2, '0');
-    return `${minutes}:${seconds}`;
+    this.terminalSessionStore.trackLog(level, this.normalizeMessage(formatMessage(message, ...args)));
   }
 
   private normalizeMessage(message: string): string {
     return message.replace(/\s+/g, ' ').trim();
   }
 
-  private style(value: string, color: 'blue' | 'cyan' | 'green' | 'red' | 'yellow'): string {
-    const palette = {
-      blue: '\x1b[34m',
-      cyan: '\x1b[36m',
-      green: '\x1b[32m',
-      red: '\x1b[31m',
-      yellow: '\x1b[33m',
-    };
-
-    return `${palette[color]}${value}\x1b[0m`;
-  }
-
-  private dim(value: string): string {
-    return `\x1b[2m${value}\x1b[0m`;
-  }
-
   private readonly restoreTerminal = (): void => {
-    if (!this.interactive) return;
-    process.stdout.write('\x1b[?25h');
+    this.inkRenderer?.unmount();
+    this.inkRenderer = undefined;
   };
 
   private readonly handleInterrupt = (): void => {

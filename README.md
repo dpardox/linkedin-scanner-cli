@@ -27,7 +27,9 @@ If LinkedIn closes the session, delete that file, run `npm start`, and log in ma
 
 Copy the `config.scanner.template.ts` file to `config.scanner.ts` and adjust the configuration as needed.
 
-Reusable skill keyword groups live in `src/skills`. You can compose them into `strictInclude` and `strictExclude` with `createKeywords(...)`, and still add one-off keywords when a search needs something custom.
+Include/exclude matching rules now live in `rules/catalog.jsonl`. The config uses `createKeywordsFromPersistedRules(...)` to select rule IDs and can still append one-off keywords with `includeKeywords` and `excludeKeywords`.
+
+If `rules/catalog.jsonl` does not exist yet, the scanner seeds it automatically from the current built-in rule packs the first time the config is loaded.
 
 The scanner automatically runs each configured search in this order:
 
@@ -49,5 +51,6 @@ Run `npm start` to launch the scanner.
 
 - The use of method `waitForTimeout` is for preventing the browser overload and simulate human behavior.
 - for you reemplaza el recent activity temporalmente
-
-If `runUndetermined` is enabled, the scanner starts a final review queue for `UNDETERMINED` jobs after the automatic searches finish. For each one, it opens the job and waits for terminal input: type `d` to dismiss it or press Enter to continue with the next unknown.
+- Unknown jobs now go through the same manual review flow as any other shortlist hit. The scanner waits for you to dismiss them in LinkedIn before continuing.
+- The TUI shows a rule input during manual review. Use it to save future include/exclude rules into `rules/catalog.jsonl`.
+- The rule input supports plain text with `Enter`, or commands such as `/include term`, `/exclude term`, `/delete rule-id`, and `/clear`.

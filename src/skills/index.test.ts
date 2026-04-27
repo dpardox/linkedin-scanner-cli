@@ -10,15 +10,15 @@ describe('skills helpers', () => {
     ]);
   });
 
-  test('should build strict include and strict exclude keywords from reusable skills', () => {
+  test('should build include and exclude keywords from reusable skills', () => {
     expect(createKeywords({
       includeSkills: [['Angular', 'AngularJS']],
       excludeSkills: [['English C1'], ['PHP']],
       includeKeywords: ['TypeScript'],
       excludeKeywords: ['Java'],
     })).toEqual({
-      strictInclude: ['Angular', 'AngularJS', 'TypeScript'],
-      strictExclude: ['English C1', 'PHP', 'Java'],
+      include: ['Angular', 'AngularJS', 'TypeScript'],
+      exclude: ['English C1', 'PHP', 'Java'],
     });
   });
 });

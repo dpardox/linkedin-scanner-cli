@@ -1,25 +1,28 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-vi.mock('@adapters/winston.adapter', () => ({
-  WinstonAdapter: vi.fn()
-}));
+const runMock = vi.fn().mockResolvedValue(undefined);
+const defaultExecutionOptions = {
+  showUnknownJobs: false,
+};
+const selectExecutionOptionsMock = vi.fn().mockResolvedValue(defaultExecutionOptions);
 
-vi.mock('@adapters/sound-notification.adapter', () => ({
-  SoundNotificationAdapter: vi.fn()
-}));
-
-vi.mock('@adapters/chromium.adapter', () => ({
-  ChromiumAdapter: vi.fn()
-}));
-
-vi.mock('@adapters/franc.adapter', () => ({
-  FrancAdapter: vi.fn()
+vi.mock('@apps/factories/job-checker.factory', () => ({
+  createJobCheckerRuntime: vi.fn(() => ({
+    jobChecker: {
+      run: runMock,
+    },
+    interaction: {
+      selectExecutionOptions: selectExecutionOptionsMock,
+    },
+  })),
 }));
 
 describe('Main', () => {
 
   beforeEach(() => {
     vi.resetModules();
+    runMock.mockClear();
+    selectExecutionOptionsMock.mockClear();
   });
 
   afterEach(() => {
@@ -27,17 +30,10 @@ describe('Main', () => {
   });
 
   test('should initialize the application', async () => {
-    const runMock = vi.fn().mockResolvedValue(undefined);
-
-    vi.doMock('@apps/job-checker.app', () => ({
-      JobCheckerApp: vi.fn().mockImplementation(() => ({
-        run: runMock
-      }))
-    }));
-
     await import('./main');
 
-    expect(runMock).toHaveBeenCalled();
+    expect(selectExecutionOptionsMock).toHaveBeenCalledWith(defaultExecutionOptions);
+    expect(runMock).toHaveBeenCalledWith(defaultExecutionOptions);
   });
 
 });

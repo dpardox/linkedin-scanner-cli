@@ -1,3 +1,5 @@
+import { UndeterminedQueueEntry } from '@shared/types/undetermined-queue-entry.type';
+
 export type LoggerContext = {
   runMode?: string;
   phase?: string;
@@ -26,5 +28,6 @@ export interface LoggerPort {
   success(...args: unknown[]): void;
   error(...args: unknown[]): void;
   forYou(entry: ForYouEntry): void;
+  trackUndetermined?(entry: UndeterminedQueueEntry): void;
   br(): void;
 }

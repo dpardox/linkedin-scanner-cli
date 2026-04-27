@@ -1,4 +1,4 @@
 export type Keywords = {
-  strictInclude: string[];
-  strictExclude: string[];
+  include: string[];
+  exclude: string[];
 };

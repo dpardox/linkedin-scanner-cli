@@ -1,21 +1,30 @@
-import { createInterface } from 'node:readline/promises';
-import { contentSearchQuery, defaultJobSearchFilters, jobSearchConfigs, runUndetermined } from '@config/main.config';
+import { contentSearchQuery, defaultJobSearchFilters, jobSearchConfigs } from '@config/main.config';
 import { JobsSearchPage } from '@core/pages/jobs-search.page';
 import { LoginPage } from '@core/pages/login.page';
 import { matchWholeWord } from '@utils/match-whole-word.util';
 import { SearchResultsContentPage } from '@core/pages/searchResultsContent.page';
+import { InteractionPort } from '@ports/interaction.port';
 import { NotifierPort } from '@ports/notifier.port';
 import { LoggerPort } from '@ports/logger.port';
 import { JobStatus } from '@enums/job-status.enum';
 import { normalize } from '@utils/normalize.util';
 import { ExpandedJobSearchConfig, JobSearchConfig } from '@shared/types/job-search-config.type';
+import { ExecutionOptions } from '@shared/types/execution-options.type';
 import { JobModel } from '@models/job.model';
 import { BrowserPort } from '@ports/browser.port';
 import { LangDetectorPort } from '@ports/lang-detector.port';
 import { JobRepository } from '@repository/job.repository';
 import { JobDetailsExtractionError } from '@core/pages/job-details-extraction.error';
 import { TimePostedRange } from '@enums/time-posted-range.enum';
+import { ManualReviewEntry } from '@shared/types/manual-review-entry.type';
+import { UndeterminedQueueEntry } from '@shared/types/undetermined-queue-entry.type';
 
+type JobMatchClassification = 'include' | 'exclude' | 'unknown';
+
+type JobMatchEvaluation = {
+  classification: JobMatchClassification;
+  criteria: string[];
+};
 
 export class JobCheckerApp {
 
@@ -30,16 +39,21 @@ export class JobCheckerApp {
 
   constructor (
     private readonly logger: LoggerPort,
+    private readonly interaction: InteractionPort,
     private readonly notifier: NotifierPort,
     private readonly browser: BrowserPort,
     private readonly langDetector: LangDetectorPort,
     private readonly jobRepository: JobRepository,
   ) { }
 
-  public async run(): Promise<void> {
+  public async run(executionOptions: ExecutionOptions): Promise<void> {
     try {
-      this.logger.setContext({ runMode: 'default', phase: 'Starting run', jobId: undefined });
-      await this.tryRun();
+      this.logger.setContext({
+        runMode: 'default',
+        phase: 'Starting run',
+        jobId: undefined,
+      });
+      await this.tryRun(executionOptions);
 
       this.logger.setContext({ phase: 'Finished', jobId: undefined });
       this.logger.success('Execution finished!');
@@ -80,8 +94,11 @@ export class JobCheckerApp {
     }
   }
 
-  public async tryRun(): Promise<void> {
-    this.logger.setContext({ phase: 'Launching browser', jobId: undefined });
+  public async tryRun(executionOptions: ExecutionOptions): Promise<void> {
+    this.logger.setContext({
+      phase: 'Launching browser',
+      jobId: undefined,
+    });
     await this.browser.launch({ headless: false });
 
     const firstPage = await this.browser.firstPage();
@@ -90,8 +107,7 @@ export class JobCheckerApp {
     this.jobsSearchPage = new JobsSearchPage(firstPage, this.logger);
 
     const expandedConfigs = this.expandConfigs(jobSearchConfigs);
-    await this.runJobSearches(expandedConfigs);
-    await this.reviewUndeterminedJobs();
+    await this.runJobSearches(expandedConfigs, executionOptions);
 
     const searchResultsContentPage = new SearchResultsContentPage(await this.browser.firstPage(), this.logger);
     this.logger.setContext({
@@ -127,11 +143,11 @@ export class JobCheckerApp {
     });
   }
 
-  private async runJobSearches(configs: ExpandedJobSearchConfig[]): Promise<void> {
+  private async runJobSearches(configs: ExpandedJobSearchConfig[], executionOptions: ExecutionOptions): Promise<void> {
     for (const timePostedRange of JobCheckerApp.automaticTimePostedRanges) {
       for (const config of configs) {
         this.logger.br();
-        await this.jobSearchByTimePostedRange(config, timePostedRange);
+        await this.jobSearchByTimePostedRange(config, timePostedRange, executionOptions);
       }
     }
   }
@@ -139,6 +155,7 @@ export class JobCheckerApp {
   private async jobSearchByTimePostedRange(
     config: ExpandedJobSearchConfig,
     timePostedRange: TimePostedRange,
+    executionOptions: ExecutionOptions,
   ): Promise<void> {
     const { query, location, filters } = config;
     const timePostedRangeLabel = this.describeTimePostedRange(timePostedRange);
@@ -165,7 +182,7 @@ export class JobCheckerApp {
         this.logger.br();
         try {
           await this.jobsSearchPage.markJobAsCurrent(jobId);
-          await this.checkJob(jobId, config);
+          await this.checkJob(jobId, config, executionOptions);
         } catch (error) {
           if (error instanceof JobDetailsExtractionError) {
             throw error;
@@ -239,18 +256,32 @@ export class JobCheckerApp {
     return ids;
   }
 
-  private async checkJob(jobId: string, config: ExpandedJobSearchConfig): Promise<void> {
+  private async checkJob(jobId: string, config: ExpandedJobSearchConfig, executionOptions: ExecutionOptions): Promise<void> {
     this.logger.setContext({ phase: 'Evaluating job', jobId });
     const jobModel = await this.getJobDetails(jobId);
 
     if (await this.isDissmissedJob(jobId)) return;
     if (await this.isAppliedJob(jobId)) return;
     if (!await this.hasValidLanguage(jobModel, config.languages)) return;
-    const shortlistCriteria = await this.getJobFitness(jobModel, config);
-    if (!shortlistCriteria.length) return;
 
-    this.showPotentialMatch(jobModel, shortlistCriteria);
-    await this.markForManualCheck(jobModel);
+    const jobMatchEvaluation = await this.evaluateJobMatch(jobModel, config);
+
+    if (jobMatchEvaluation.classification === 'exclude') {
+      return;
+    }
+
+    if (jobMatchEvaluation.classification === 'include') {
+      const manualReviewEntry = this.showPotentialMatch(jobModel, jobMatchEvaluation.criteria, 'include');
+      await this.markForManualCheck(jobModel, manualReviewEntry);
+      return;
+    }
+
+    if (!executionOptions.showUnknownJobs) {
+      await this.markUndeterminedJob(jobModel);
+      return;
+    }
+
+    await this.markUndeterminedJobForManualCheck(jobModel);
   }
 
   private async getJobDetails(jobId: string): Promise<JobModel> {
@@ -298,23 +329,46 @@ export class JobCheckerApp {
     return true;
   }
 
-  private async getJobFitness(job: JobModel, config: ExpandedJobSearchConfig): Promise<string[]> {
+  private async evaluateJobMatch(job: JobModel, config: ExpandedJobSearchConfig): Promise<JobMatchEvaluation> {
     this.logger.info('Checking if job "%s" is a good fit...', job.id);
 
-    if (await this.jobIsClosed(job)) return [];
-    if (await this.jobHasRestrictedLocations(job, config.restrictedLocations)) return [];
-    if (await this.jobHasStrictExcludedWords(job, config.keywords.strictExclude)) return [];
-
-    const shortlistCriteria = [
-      ...this.getStrictIncludeMatches(job, config.keywords.strictInclude),
-      ...this.getHighSkillsMatchCriteria(job),
-    ];
-
-    if (shortlistCriteria.length) {
-      return Array.from(new Set(shortlistCriteria));
+    if (await this.jobIsClosed(job)) {
+      return {
+        classification: 'exclude',
+        criteria: [],
+      };
     }
 
-    return await this.checkUndeterminedJob(job) ? ['Undetermined'] : [];
+    if (await this.jobHasRestrictedLocations(job, config.restrictedLocations)) {
+      return {
+        classification: 'exclude',
+        criteria: [],
+      };
+    }
+
+    const excludeMatches = this.getMatchingKeywords(job.fullDescription, config.keywords.exclude);
+
+    if (excludeMatches.length) {
+      await this.discardJobByExcludeTerms(job, excludeMatches);
+      return {
+        classification: 'exclude',
+        criteria: excludeMatches,
+      };
+    }
+
+    const includeMatches = this.getIncludeMatches(job, config.keywords.include);
+
+    if (includeMatches.length) {
+      return {
+        classification: 'include',
+        criteria: includeMatches,
+      };
+    }
+
+    return {
+      classification: 'unknown',
+      criteria: [],
+    };
   }
 
   private async jobIsClosed(job: JobModel): Promise<boolean> {
@@ -340,33 +394,19 @@ export class JobCheckerApp {
     return false;
   }
 
-  private async jobHasStrictExcludedWords(job: JobModel, strictExcludedWords: string[] = []): Promise<boolean> {
-    const matchedKeywords = this.findMatchingKeywords(job.fullDescription, strictExcludedWords);
-
-    if (!matchedKeywords.length) return false;
-
+  private async discardJobByExcludeTerms(job: JobModel, excludeTerms: string[]): Promise<void> {
     this.logger.countJob?.('discarded');
-    this.logger.error('Job "%s" has strict excluded words: %O', job.id, matchedKeywords);
+    this.logger.error('Job "%s" has exclude words: %O', job.id, excludeTerms);
     await this.skipJob(job);
-    return true;
   }
 
-  private getStrictIncludeMatches(job: JobModel, strictIncludeWords: string[] = []): string[] {
-    const matchedKeywords = this.findMatchingKeywords(job.fullDescription, strictIncludeWords);
+  private getIncludeMatches(job: JobModel, includeWords: string[] = []): string[] {
+    const matchedKeywords = this.getMatchingKeywords(job.fullDescription, includeWords);
 
     if (!matchedKeywords.length) return [];
 
-    this.logger.success('Job "%s" has strict include words: %O', job.id, matchedKeywords);
+    this.logger.success('Job "%s" has include words: %O', job.id, matchedKeywords);
     return matchedKeywords;
-  }
-
-  private getHighSkillsMatchCriteria(job: JobModel): string[] {
-    if (job.highSkillsMatch) {
-      this.logger.success('Job "%s" has high skills match!', job.id);
-      return ['High skills match'];
-    }
-
-    return [];
   }
 
   private async skipJob(job: JobModel): Promise<void> {
@@ -375,43 +415,55 @@ export class JobCheckerApp {
     await this.updateJobStatus(job.id, JobStatus.dissmissed);
   }
 
-  private async checkUndeterminedJob(job: JobModel): Promise<boolean> {
-    this.logger.info('Checking if job "%s" is undetermined...', job.id);
-    await this.markJobAsUndetermined(job);
-    return false;
+  private async markUndeterminedJobForManualCheck(job: JobModel): Promise<void> {
+    await this.markUndeterminedJob(job);
+    this.logger.trackUndetermined?.(this.createUndeterminedQueueEntry(job));
+    const manualReviewEntry = this.showPotentialMatch(job, ['Unknown'], 'unknown');
+    await this.markForManualCheck(job, manualReviewEntry);
   }
 
-  private async markJobAsUndetermined(job: JobModel): Promise<void> {
+  private async markUndeterminedJob(job: JobModel): Promise<void> {
     this.logger.setContext({ phase: 'Marking undetermined', jobId: job.id });
     this.logger.countJob?.('undetermined');
     this.logger.warn('Marking job "%s" as undetermined...', job.id);
     await this.updateJobStatus(job.id, JobStatus.undetermined);
   }
 
-  private showPotentialMatch(job: JobModel, criteria: string[]): void {
+  private showPotentialMatch(
+    job: JobModel,
+    criteria: string[],
+    classification: ManualReviewEntry['classification'],
+  ): ManualReviewEntry {
     this.logger.setContext({ phase: 'Potential match found', jobId: job.id });
     this.logger.countJob?.('found');
     this.logger.info('Potential match found!');
-    const { id, title, link, location, emails } = job;
+    const manualReviewEntry = this.createManualReviewEntry(job, criteria, classification);
 
     this.logger.forYou({
-      id,
-      title,
-      link,
-      location,
-      emails,
-      language: job.language(this.langDetector),
-      criteria,
+      id: manualReviewEntry.id,
+      title: manualReviewEntry.title,
+      link: manualReviewEntry.link,
+      location: manualReviewEntry.location,
+      emails: manualReviewEntry.emails,
+      language: manualReviewEntry.language,
+      criteria: manualReviewEntry.criteria,
     });
+
+    return manualReviewEntry;
   }
 
-  private async markForManualCheck(job: JobModel): Promise<void> {
-    this.logger.setContext({ phase: 'Waiting manual review', jobId: job.id });
+  private async markForManualCheck(job: JobModel, manualReviewEntry: ManualReviewEntry): Promise<void> {
+    this.logger.setContext({ runMode: 'manual-review', phase: 'Waiting manual review', jobId: job.id });
     this.logger.info('Marking job "%s" for manual check...', job.id);
+    this.interaction.startManualReview(manualReviewEntry);
     await this.jobsSearchPage.markJobForReview(job.id);
     this.notifier.notify();
-    await this.jobsSearchPage.waitForJobToBeDismissed(job.id);
-    this.logger.setContext({ phase: 'Resuming scan', jobId: job.id });
+    try {
+      await this.jobsSearchPage.waitForJobToBeDismissed(job.id);
+    } finally {
+      this.interaction.finishManualReview(job.id);
+    }
+    this.logger.setContext({ runMode: 'default', phase: 'Resuming scan', jobId: job.id });
     await this.updateJobStatus(job.id, JobStatus.dissmissed);
     this.logger.success('Job "%s" reviewed!', job.title);
   }
@@ -420,86 +472,35 @@ export class JobCheckerApp {
     await this.jobRepository.update(jobId, { status });
   }
 
-  private async reviewUndeterminedJobs(enabled = runUndetermined): Promise<void> {
-    if (!enabled) return;
-
-    const jobs = await this.jobRepository.findByStatus(JobStatus.undetermined);
-
-    if (!jobs.length) {
-      this.logger.info('No undetermined jobs pending review.');
-      return;
-    }
-
-    this.logger.br();
-    this.logger.success('Starting final undetermined review...');
-
-    const page = await this.browser.firstPage();
-
-    for (const job of jobs) {
-      this.logger.setContext({
-        runMode: 'undetermined',
-        phase: 'Reviewing undetermined job',
-        searchQuery: undefined,
-        location: undefined,
-        jobId: job.id,
-      });
-      this.logger.info('Opening undetermined job "%s"...', job.id);
-      await page.goto(job.link, { waitUntil: 'domcontentloaded' });
-      this.notifier.notify();
-
-      const action = await this.promptUndeterminedAction(job);
-
-      if (action === 'dismiss') {
-        await this.updateJobStatus(job.id, JobStatus.dissmissed);
-        this.logger.success('Job "%s" dismissed from undetermined queue.', job.title);
-        continue;
-      }
-
-      this.logger.info('Keeping job "%s" in undetermined queue.', job.id);
-    }
-
-    this.logger.setContext({
-      runMode: 'default',
-      phase: 'Undetermined review completed',
-      searchQuery: undefined,
-      location: undefined,
-      jobId: undefined,
-    });
-    this.logger.success('Undetermined review finished.');
+  private createUndeterminedQueueEntry(job: JobModel): UndeterminedQueueEntry {
+    return {
+      id: job.id,
+      title: job.title,
+      location: job.location,
+      link: job.link,
+      decision: 'pending',
+    };
   }
 
-  private async promptUndeterminedAction(job: JobModel): Promise<'dismiss' | 'keep'> {
-    if (!process.stdin.isTTY || !process.stdout.isTTY) {
-      return 'keep';
-    }
-
-    const prompt = [
-      '',
-      `Unknown job: ${job.title || job.id}`,
-      `Location: ${job.location || '-'}`,
-      `Link: ${job.link}`,
-      'Escribe "d" para descartarlo o presiona Enter para seguir con el siguiente unknown.',
-      '> ',
-    ].join('\n');
-
-    process.stdout.write('\x1b[?25h');
-
-    const readline = createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-
-    try {
-      const answer = await readline.question(prompt);
-      const normalizedAnswer = normalize(answer);
-      return ['d', 'descartar', 'dismiss', 'discard'].includes(normalizedAnswer) ? 'dismiss' : 'keep';
-    } finally {
-      readline.close();
-      process.stdout.write('\x1b[?25l');
-    }
+  private createManualReviewEntry(
+    job: JobModel,
+    criteria: string[],
+    classification: ManualReviewEntry['classification'],
+  ): ManualReviewEntry {
+    return {
+      id: job.id,
+      title: job.title,
+      link: job.link,
+      location: job.location,
+      emails: job.emails,
+      language: job.language(this.langDetector),
+      criteria,
+      classification,
+      defaultRuleScope: classification === 'include' ? 'include' : 'exclude',
+    };
   }
 
-  private findMatchingKeywords(content: string, keywords: string[] = []): string[] {
+  private getMatchingKeywords(content: string, keywords: string[] = []): string[] {
     return keywords.filter(keyword => matchWholeWord(content, keyword));
   }
 

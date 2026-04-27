@@ -10,7 +10,7 @@ import { golangKeywords } from './golang.keywords';
 import { SAPKeywords } from './sap.keywords';
 import { mergeKeywordGroups } from '@skills';
 
-export const additionalStrictExcludeKeywords = mergeKeywordGroups(
+export const additionalExcludeKeywords = mergeKeywordGroups(
   SAPKeywords,
   javaKeywords,
   pythonKeywords,
@@ -225,8 +225,8 @@ export const additionalStrictExcludeKeywords = mergeKeywordGroups(
   ],
 );
 
-export const strictExcludeKeywords = mergeKeywordGroups(
+export const excludeKeywords = mergeKeywordGroups(
   fluentEnglishKeywords,
   dotnetKeywords,
-  additionalStrictExcludeKeywords,
+  additionalExcludeKeywords,
 );

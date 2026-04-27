@@ -1,8 +1,8 @@
 import { Location } from '@enums/location.enum';
 import { WorkType } from '@enums/work-type.enum';
+import { createKeywordsFromPersistedRules } from '@config/rules';
 import { Filters } from '@shared/types/filters.type';
 import { JobSearchConfig } from '@shared/types/job-search-config.type';
-import { angularSkillKeywords, createKeywords, dotnetSkillKeywords, englishSkillKeywords } from '@skills';
 
 const defaultLanguages = ['eng', 'spa'];
 
@@ -67,13 +67,12 @@ export const jobSearchConfigs: JobSearchConfig[] = [
       easyApply: true,
     },
 
-    keywords: createKeywords({
+    keywords: createKeywordsFromPersistedRules({
       /**
-       * Reusable skills from src/skills that can be added to either side
-       * of the search without duplicating keyword lists.
+       * Persisted rules live in rules/catalog.jsonl by default.
        */
-      includeSkills: [ angularSkillKeywords ],
-      excludeSkills: [ englishSkillKeywords, dotnetSkillKeywords ],
+      includeRuleIds: ['angular'],
+      excludeRuleIds: ['english', 'dotnet', 'strict-exclude-additional'],
 
       /**
        * You can still add one-off keywords directly when needed.
@@ -106,8 +105,3 @@ export const jobSearchConfigs: JobSearchConfig[] = [
  * Query used to populate the final LinkedIn posts search window.
  */
 export const contentSearchQuery = '"desarrollador angular"';
-
-/**
- * Enables the final review queue for undetermined jobs.
- */
-export const runUndetermined = false;

@@ -26,8 +26,8 @@ export function createKeywords({
   excludeKeywords = [],
 }: CreateKeywordsParams = {}): Keywords {
   return {
-    strictInclude: mergeKeywordGroups(...includeSkills, includeKeywords),
-    strictExclude: mergeKeywordGroups(...excludeSkills, excludeKeywords),
+    include: mergeKeywordGroups(...includeSkills, includeKeywords),
+    exclude: mergeKeywordGroups(...excludeSkills, excludeKeywords),
   };
 }
 

@@ -9,6 +9,32 @@ import { JobStatus } from '@enums/job-status.enum';
 import { WorkType } from '@enums/work-type.enum';
 import { JobModel } from '@models/job.model';
 
+const executionOptions = {
+  showUnknownJobs: false,
+};
+
+function createLogger(): LoggerPort {
+  return {
+    setContext: vi.fn(),
+    countJob: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
+    forYou: vi.fn(),
+    br: vi.fn(),
+    trackUndetermined: vi.fn(),
+  };
+}
+
+function createInteraction() {
+  return {
+    selectExecutionOptions: vi.fn(),
+    startManualReview: vi.fn(),
+    finishManualReview: vi.fn(),
+  };
+}
+
 describe('JobCheckerApp', () => {
 
   test('should not define a manual time posted range in default filters', () => {
@@ -16,18 +42,11 @@ describe('JobCheckerApp', () => {
   });
 
   test('should merge default job search filters into expanded configs', () => {
-    const logger: LoggerPort = {
-      setContext: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      success: vi.fn(),
-      error: vi.fn(),
-      forYou: vi.fn(),
-      br: vi.fn(),
-    };
+    const logger = createLogger();
 
     const app = new JobCheckerApp(
       logger,
+      createInteraction() as any,
       { notify: vi.fn() } as any,
       {} as any,
       {} as any,
@@ -43,8 +62,8 @@ describe('JobCheckerApp', () => {
           easyApply: true,
         },
         keywords: {
-          strictInclude: [],
-          strictExclude: [],
+          include: [],
+          exclude: [],
         },
         languages: [ 'spa' ],
       },
@@ -57,18 +76,11 @@ describe('JobCheckerApp', () => {
   });
 
   test('should ignore configured time posted ranges and keep the remaining filters', () => {
-    const logger: LoggerPort = {
-      setContext: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      success: vi.fn(),
-      error: vi.fn(),
-      forYou: vi.fn(),
-      br: vi.fn(),
-    };
+    const logger = createLogger();
 
     const app = new JobCheckerApp(
       logger,
+      createInteraction() as any,
       { notify: vi.fn() } as any,
       {} as any,
       {} as any,
@@ -85,8 +97,8 @@ describe('JobCheckerApp', () => {
           workType: WorkType.remote,
         },
         keywords: {
-          strictInclude: [],
-          strictExclude: [],
+          include: [],
+          exclude: [],
         },
         languages: [ 'spa' ],
       },
@@ -99,18 +111,11 @@ describe('JobCheckerApp', () => {
   });
 
   test('should search all configs by day, then week and finally month', async () => {
-    const logger: LoggerPort = {
-      setContext: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      success: vi.fn(),
-      error: vi.fn(),
-      forYou: vi.fn(),
-      br: vi.fn(),
-    };
+    const logger = createLogger();
 
     const app = new JobCheckerApp(
       logger,
+      createInteraction() as any,
       { notify: vi.fn() } as any,
       {} as any,
       {} as any,
@@ -142,7 +147,7 @@ describe('JobCheckerApp', () => {
           workType: WorkType.hybrid,
         },
       },
-    ]);
+    ], executionOptions);
 
     expect(jobsSearchPage.open).toHaveBeenNthCalledWith(1, 'angular', '92000000', {
       easyApply: true,
@@ -177,18 +182,11 @@ describe('JobCheckerApp', () => {
   });
 
   test('should continue processing jobs after a single job failure', async () => {
-    const logger: LoggerPort = {
-      setContext: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      success: vi.fn(),
-      error: vi.fn(),
-      forYou: vi.fn(),
-      br: vi.fn(),
-    };
+    const logger = createLogger();
 
     const app = new JobCheckerApp(
       logger,
+      createInteraction() as any,
       { notify: vi.fn() } as any,
       {} as any,
       {} as any,
@@ -221,7 +219,7 @@ describe('JobCheckerApp', () => {
       query: 'angular',
       location: '92000000',
       filters: {},
-    }, TimePostedRange.day);
+    }, TimePostedRange.day, executionOptions);
 
     expect(checkJob).toHaveBeenCalledTimes(2);
     expect(jobsSearchPage.recoverSearchResults).toHaveBeenCalledTimes(1);
@@ -230,18 +228,11 @@ describe('JobCheckerApp', () => {
   });
 
   test('should stop processing jobs when job detail selectors fail', async () => {
-    const logger: LoggerPort = {
-      setContext: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      success: vi.fn(),
-      error: vi.fn(),
-      forYou: vi.fn(),
-      br: vi.fn(),
-    };
+    const logger = createLogger();
 
     const app = new JobCheckerApp(
       logger,
+      createInteraction() as any,
       { notify: vi.fn() } as any,
       {} as any,
       {} as any,
@@ -287,33 +278,26 @@ describe('JobCheckerApp', () => {
       query: 'angular',
       location: '92000000',
       filters: {},
-    }, TimePostedRange.day)).rejects.toBe(selectorError);
+    }, TimePostedRange.day, executionOptions)).rejects.toBe(selectorError);
 
     expect(jobsSearchPage.recoverSearchResults).not.toHaveBeenCalled();
     expect(jobsSearchPage.markJobAsSeen).toHaveBeenCalledTimes(1);
     expect(logger.error).not.toHaveBeenCalled();
   });
 
-  test('should return matched shortlist criteria for manual review', async () => {
-    const logger: LoggerPort = {
-      setContext: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      success: vi.fn(),
-      error: vi.fn(),
-      forYou: vi.fn(),
-      br: vi.fn(),
-    };
+  test('should classify jobs with include matches for manual review', async () => {
+    const logger = createLogger();
 
     const app = new JobCheckerApp(
       logger,
+      createInteraction() as any,
       { notify: vi.fn() } as any,
       {} as any,
       {} as any,
       {} as any,
     );
 
-    const criteria = await (app as any).getJobFitness(new JobModel({
+    const evaluation = await (app as any).evaluateJobMatch(new JobModel({
       id: '4386875881',
       title: 'Angular Developer',
       description: 'Angular and TypeScript role',
@@ -322,24 +306,114 @@ describe('JobCheckerApp', () => {
     }), {
       restrictedLocations: [],
       keywords: {
-        strictInclude: ['Angular', 'React'],
-        strictExclude: [],
+        include: ['Angular', 'React'],
+        exclude: [],
       },
     });
 
-    expect(criteria).toEqual(['Angular', 'High skills match']);
+    expect(evaluation).toEqual({
+      classification: 'include',
+      criteria: ['Angular'],
+    });
+  });
+
+  test('should discard jobs with exclude matches without sending them to unknown review', async () => {
+    const logger = createLogger();
+    const interaction = createInteraction();
+    const jobRepository = {
+      update: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const app = new JobCheckerApp(
+      logger,
+      interaction as any,
+      { notify: vi.fn() } as any,
+      {} as any,
+      {} as any,
+      jobRepository as any,
+    );
+
+    vi.spyOn(app as any, 'getJobDetails').mockResolvedValue(new JobModel({
+      id: '4386875881',
+      title: 'PHP Backend Developer',
+      description: 'We are looking for a PHP developer',
+      location: 'Remote',
+    }));
+    vi.spyOn(app as any, 'isDissmissedJob').mockResolvedValue(false);
+    vi.spyOn(app as any, 'isAppliedJob').mockResolvedValue(false);
+    vi.spyOn(app as any, 'hasValidLanguage').mockResolvedValue(true);
+
+    const markForManualCheck = vi.spyOn(app as any, 'markForManualCheck').mockResolvedValue(undefined);
+    const markUndeterminedJobForManualCheck = vi.spyOn(app as any, 'markUndeterminedJobForManualCheck').mockResolvedValue(undefined);
+
+    await (app as any).checkJob('4386875881', {
+      restrictedLocations: [],
+      keywords: {
+        include: ['Angular'],
+        exclude: ['PHP'],
+      },
+    }, executionOptions);
+
+    expect(jobRepository.update).toHaveBeenCalledWith('4386875881', {
+      status: JobStatus.dissmissed,
+    });
+    expect(markForManualCheck).not.toHaveBeenCalled();
+    expect(markUndeterminedJobForManualCheck).not.toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalledWith('Job "%s" has exclude words: %O', '4386875881', ['PHP']);
+  });
+
+  test('should keep unknown jobs hidden from manual review when execution option is disabled', async () => {
+    const logger = createLogger();
+    const interaction = createInteraction();
+    const notifier = {
+      notify: vi.fn(),
+    };
+    const jobRepository = {
+      update: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const app = new JobCheckerApp(
+      logger,
+      interaction as any,
+      notifier as any,
+      {} as any,
+      {} as any,
+      jobRepository as any,
+    );
+
+    vi.spyOn(app as any, 'getJobDetails').mockResolvedValue(new JobModel({
+      id: '4386875881',
+      title: 'TypeScript Developer',
+      description: 'We build internal tools',
+      location: 'Remote',
+    }));
+    vi.spyOn(app as any, 'isDissmissedJob').mockResolvedValue(false);
+    vi.spyOn(app as any, 'isAppliedJob').mockResolvedValue(false);
+    vi.spyOn(app as any, 'hasValidLanguage').mockResolvedValue(true);
+
+    await (app as any).checkJob('4386875881', {
+      restrictedLocations: [],
+      keywords: {
+        include: ['Angular'],
+        exclude: ['PHP'],
+      },
+    }, executionOptions);
+
+    expect(jobRepository.update).toHaveBeenCalledTimes(1);
+    expect(jobRepository.update).toHaveBeenCalledWith('4386875881', {
+      status: JobStatus.undetermined,
+    });
+    expect(logger.countJob).toHaveBeenCalledWith('undetermined');
+    expect(logger.forYou).not.toHaveBeenCalled();
+    expect(logger.trackUndetermined).not.toHaveBeenCalled();
+    expect(interaction.startManualReview).not.toHaveBeenCalled();
+    expect(interaction.finishManualReview).not.toHaveBeenCalled();
+    expect(notifier.notify).not.toHaveBeenCalled();
   });
 
   test('should resume the scanner context after manual review finishes', async () => {
-    const logger: LoggerPort = {
-      setContext: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      success: vi.fn(),
-      error: vi.fn(),
-      forYou: vi.fn(),
-      br: vi.fn(),
-    };
+    const logger = createLogger();
+    const interaction = createInteraction();
 
     const jobRepository = {
       update: vi.fn().mockResolvedValue(undefined),
@@ -347,6 +421,7 @@ describe('JobCheckerApp', () => {
 
     const app = new JobCheckerApp(
       logger,
+      interaction as any,
       { notify: vi.fn() } as any,
       {} as any,
       {} as any,
@@ -361,52 +436,51 @@ describe('JobCheckerApp', () => {
     await (app as any).markForManualCheck({
       id: '4386875881',
       title: 'Programador full stack',
+    }, {
+      id: '4386875881',
+      title: 'Programador full stack',
+      link: 'https://www.linkedin.com/jobs/view/4386875881/',
+      location: 'Remote',
+      emails: [],
+      language: 'spa',
+      criteria: ['Unknown'],
+      classification: 'unknown',
+      defaultRuleScope: 'exclude',
     });
 
     expect(logger.setContext).toHaveBeenNthCalledWith(1, {
+      runMode: 'manual-review',
       phase: 'Waiting manual review',
       jobId: '4386875881',
     });
     expect(logger.setContext).toHaveBeenNthCalledWith(2, {
+      runMode: 'default',
       phase: 'Resuming scan',
       jobId: '4386875881',
     });
     expect(jobRepository.update).toHaveBeenCalledWith('4386875881', {
       status: JobStatus.dissmissed,
     });
+    expect(interaction.startManualReview).toHaveBeenCalledWith({
+      id: '4386875881',
+      title: 'Programador full stack',
+      link: 'https://www.linkedin.com/jobs/view/4386875881/',
+      location: 'Remote',
+      emails: [],
+      language: 'spa',
+      criteria: ['Unknown'],
+      classification: 'unknown',
+      defaultRuleScope: 'exclude',
+    });
+    expect(interaction.finishManualReview).toHaveBeenCalledWith('4386875881');
     expect(logger.success).toHaveBeenCalledWith('Job "%s" reviewed!', 'Programador full stack');
   });
 
-  test('should start final undetermined review and dismiss selected jobs', async () => {
-    const logger: LoggerPort = {
-      setContext: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      success: vi.fn(),
-      error: vi.fn(),
-      forYou: vi.fn(),
-      br: vi.fn(),
-    };
-
-    const firstPage = {
-      goto: vi.fn().mockResolvedValue(undefined),
-    };
+  test('should treat undetermined jobs like manual review matches', async () => {
+    const logger = createLogger();
+    const interaction = createInteraction();
 
     const jobRepository = {
-      findByStatus: vi.fn().mockResolvedValue([
-        new JobModel({
-          id: '4386875881',
-          title: 'Angular Developer',
-          location: 'Remote',
-          status: JobStatus.undetermined,
-        }),
-        new JobModel({
-          id: '4386875882',
-          title: 'Frontend Engineer',
-          location: 'Bogota',
-          status: JobStatus.undetermined,
-        }),
-      ]),
       update: vi.fn().mockResolvedValue(undefined),
     };
 
@@ -414,39 +488,58 @@ describe('JobCheckerApp', () => {
       notify: vi.fn(),
     };
 
-    const browser = {
-      firstPage: vi.fn().mockResolvedValue(firstPage),
-    };
-
     const app = new JobCheckerApp(
       logger,
+      interaction as any,
       notifier as any,
-      browser as any,
       {} as any,
+      { detect: vi.fn().mockReturnValue('spa') } as any,
       jobRepository as any,
     );
 
-    vi.spyOn(app as any, 'promptUndeterminedAction')
-      .mockResolvedValueOnce('dismiss')
-      .mockResolvedValueOnce('keep');
+    (app as any).jobsSearchPage = {
+      markJobForReview: vi.fn().mockResolvedValue(undefined),
+      waitForJobToBeDismissed: vi.fn().mockResolvedValue(undefined),
+    };
 
-    await (app as any).reviewUndeterminedJobs(true);
+    await (app as any).markUndeterminedJobForManualCheck(new JobModel({
+      id: '4386875881',
+      title: 'Angular Developer',
+      location: 'Remote',
+      status: JobStatus.undetermined,
+    }));
 
-    expect(jobRepository.findByStatus).toHaveBeenCalledWith(JobStatus.undetermined);
-    expect(browser.firstPage).toHaveBeenCalledTimes(1);
-    expect(firstPage.goto).toHaveBeenNthCalledWith(1, 'https://www.linkedin.com/jobs/view/4386875881/', {
-      waitUntil: 'domcontentloaded',
+    expect(notifier.notify).toHaveBeenCalledTimes(1);
+    expect(jobRepository.update).toHaveBeenCalledTimes(2);
+    expect(jobRepository.update).toHaveBeenNthCalledWith(1, '4386875881', {
+      status: JobStatus.undetermined,
     });
-    expect(firstPage.goto).toHaveBeenNthCalledWith(2, 'https://www.linkedin.com/jobs/view/4386875882/', {
-      waitUntil: 'domcontentloaded',
-    });
-    expect(notifier.notify).toHaveBeenCalledTimes(2);
-    expect(jobRepository.update).toHaveBeenCalledTimes(1);
-    expect(jobRepository.update).toHaveBeenCalledWith('4386875881', {
+    expect(jobRepository.update).toHaveBeenNthCalledWith(2, '4386875881', {
       status: JobStatus.dissmissed,
     });
-    expect(logger.success).toHaveBeenCalledWith('Starting final undetermined review...');
-    expect(logger.success).toHaveBeenCalledWith('Undetermined review finished.');
+    expect(logger.forYou).toHaveBeenCalledWith({
+      id: '4386875881',
+      title: 'Angular Developer',
+      location: 'Remote',
+      link: 'https://www.linkedin.com/jobs/view/4386875881/',
+      emails: [],
+      language: 'spa',
+      criteria: ['Unknown'],
+    });
+    expect((app as any).jobsSearchPage.markJobForReview).toHaveBeenCalledWith('4386875881');
+    expect((app as any).jobsSearchPage.waitForJobToBeDismissed).toHaveBeenCalledWith('4386875881');
+    expect(interaction.startManualReview).toHaveBeenCalledWith({
+      id: '4386875881',
+      title: 'Angular Developer',
+      location: 'Remote',
+      link: 'https://www.linkedin.com/jobs/view/4386875881/',
+      emails: [],
+      language: 'spa',
+      criteria: ['Unknown'],
+      classification: 'unknown',
+      defaultRuleScope: 'exclude',
+    });
+    expect(interaction.finishManualReview).toHaveBeenCalledWith('4386875881');
   });
 
 });
