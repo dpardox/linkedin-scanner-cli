@@ -1,7 +1,9 @@
 coverage/
 .auth/
 db/
+dist/
 logs/
 node_modules/
 config.scanner.ts
 rules/
+.scanner/

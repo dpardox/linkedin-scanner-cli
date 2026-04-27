@@ -1,4 +1,3 @@
-import { contentSearchQuery, defaultJobSearchFilters, jobSearchConfigs } from '@config/main.config';
 import { JobsSearchPage } from '@core/pages/jobs-search.page';
 import { LoginPage } from '@core/pages/login.page';
 import { matchWholeWord } from '@utils/match-whole-word.util';
@@ -10,6 +9,7 @@ import { JobStatus } from '@enums/job-status.enum';
 import { normalize } from '@utils/normalize.util';
 import { ExpandedJobSearchConfig, JobSearchConfig } from '@shared/types/job-search-config.type';
 import { ExecutionOptions } from '@shared/types/execution-options.type';
+import { Filters } from '@shared/types/filters.type';
 import { JobModel } from '@models/job.model';
 import { BrowserPort } from '@ports/browser.port';
 import { LangDetectorPort } from '@ports/lang-detector.port';
@@ -18,6 +18,7 @@ import { JobDetailsExtractionError } from '@core/pages/job-details-extraction.er
 import { TimePostedRange } from '@enums/time-posted-range.enum';
 import { ManualReviewEntry } from '@shared/types/manual-review-entry.type';
 import { UndeterminedQueueEntry } from '@shared/types/undetermined-queue-entry.type';
+import { ScannerConfig } from '@shared/types/scanner-config.type';
 
 type JobMatchClassification = 'include' | 'exclude' | 'unknown';
 
@@ -46,14 +47,14 @@ export class JobCheckerApp {
     private readonly jobRepository: JobRepository,
   ) { }
 
-  public async run(executionOptions: ExecutionOptions): Promise<void> {
+  public async run(scannerConfig: ScannerConfig, executionOptions: ExecutionOptions): Promise<void> {
     try {
       this.logger.setContext({
         runMode: 'default',
         phase: 'Starting run',
         jobId: undefined,
       });
-      await this.tryRun(executionOptions);
+      await this.tryRun(scannerConfig, executionOptions);
 
       this.logger.setContext({ phase: 'Finished', jobId: undefined });
       this.logger.success('Execution finished!');
@@ -94,7 +95,7 @@ export class JobCheckerApp {
     }
   }
 
-  public async tryRun(executionOptions: ExecutionOptions): Promise<void> {
+  public async tryRun(scannerConfig: ScannerConfig, executionOptions: ExecutionOptions): Promise<void> {
     this.logger.setContext({
       phase: 'Launching browser',
       jobId: undefined,
@@ -106,19 +107,19 @@ export class JobCheckerApp {
     await this.ensureAuthenticated();
     this.jobsSearchPage = new JobsSearchPage(firstPage, this.logger);
 
-    const expandedConfigs = this.expandConfigs(jobSearchConfigs);
+    const expandedConfigs = this.expandConfigs(scannerConfig.jobSearchConfigs, scannerConfig.defaultJobSearchFilters);
     await this.runJobSearches(expandedConfigs, executionOptions);
 
     const searchResultsContentPage = new SearchResultsContentPage(await this.browser.firstPage(), this.logger);
     this.logger.setContext({
       phase: 'Opening content search',
       runMode: 'default',
-      searchQuery: contentSearchQuery,
+      searchQuery: scannerConfig.contentSearchQuery,
       location: undefined,
       jobId: undefined,
     });
     this.notifier.notify();
-    await searchResultsContentPage.open(contentSearchQuery);
+    await searchResultsContentPage.open(scannerConfig.contentSearchQuery);
     this.logger.setContext({ phase: 'Waiting for manual close' });
     await searchResultsContentPage.waitForManualClose();
 
@@ -126,11 +127,11 @@ export class JobCheckerApp {
     await this.browser.close();
   }
 
-  private expandConfigs(configs: JobSearchConfig[]): ExpandedJobSearchConfig[] {
+  private expandConfigs(configs: JobSearchConfig[], defaultFilters: Filters = {}): ExpandedJobSearchConfig[] {
     return configs.flatMap(config => {
       const { locations } = config;
       const mergedFilters = {
-        ...defaultJobSearchFilters,
+        ...defaultFilters,
         ...config.filters,
       };
       const { timePostedRange: _ignoredTimePostedRange, ...filters } = mergedFilters;

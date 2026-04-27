@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { JobRuleFileRepository, PersistedJobRuleManager } from '@config/rules';
+import { ScannerPreferences } from '@shared/types/scanner-preferences.type';
 import { WinstonAdapter } from './winston.adapter';
 
 const mockLog = vi.fn();
@@ -198,7 +199,7 @@ describe('WinstonAdapter', () => {
     expect(snapshot.ruleCatalog.exclude).toEqual([]);
   });
 
-  test('should keep terminal input active after asking execution options', async () => {
+  test('should keep terminal input active after selecting execution options', async () => {
     const restoreProcessTTY = setProcessTTY(true);
     const resume = vi.spyOn(process.stdin, 'resume').mockReturnValue(process.stdin);
     const interactiveWinstonAdapter = new WinstonAdapter({
@@ -210,13 +211,47 @@ describe('WinstonAdapter', () => {
         showUnknownJobs: false,
       });
 
-      expect(mockQuestion).toHaveBeenCalledWith('Show unknown jobs? (y/N) ');
-      expect(mockClose).toHaveBeenCalledOnce();
+      expect(mockQuestion).not.toHaveBeenCalled();
+      expect(mockClose).not.toHaveBeenCalled();
       expect(mockRender).toHaveBeenCalledOnce();
       expect(resume).toHaveBeenCalledOnce();
     } finally {
       removeWinstonAdapterProcessListeners(interactiveWinstonAdapter);
       resume.mockRestore();
+      restoreProcessTTY();
+    }
+  });
+
+  test('should keep saved scanner preferences when the user does not edit them', async () => {
+    const restoreProcessTTY = setProcessTTY(true);
+    const preferences: ScannerPreferences = {
+      searchQueries: ['angular'],
+      locationKeys: ['colombia'],
+      languages: ['spa'],
+      restrictedLocations: [],
+      filters: {
+        easyApply: true,
+      },
+      includeRuleIds: ['angular'],
+      excludeRuleIds: ['english'],
+      includeKeywords: [],
+      excludeKeywords: [],
+      contentSearchQuery: '"desarrollador angular"',
+      showUnknownJobs: false,
+    };
+    const interactiveWinstonAdapter = new WinstonAdapter({
+      ruleManager: createRuleManager(),
+    });
+    mockQuestion.mockResolvedValueOnce('');
+
+    try {
+      await expect(interactiveWinstonAdapter.selectScannerPreferences(preferences, true)).resolves.toEqual(preferences);
+
+      expect(mockQuestion).toHaveBeenCalledWith('\u001B[33m›\u001B[0m Edit saved scanner preferences? (y/N) ');
+      expect(mockClose).toHaveBeenCalledOnce();
+      expect(mockRender).not.toHaveBeenCalled();
+    } finally {
+      removeWinstonAdapterProcessListeners(interactiveWinstonAdapter);
       restoreProcessTTY();
     }
   });

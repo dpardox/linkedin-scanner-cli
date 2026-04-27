@@ -1,8 +1,13 @@
 import { InteractionPort } from '@ports/interaction.port';
 import { ExecutionOptions } from '@shared/types/execution-options.type';
 import { ManualReviewEntry } from '@shared/types/manual-review-entry.type';
+import { ScannerPreferences } from '@shared/types/scanner-preferences.type';
 
 export class NullInteractionAdapter implements InteractionPort {
+
+  public async selectScannerPreferences(defaultPreferences: ScannerPreferences): Promise<ScannerPreferences> {
+    return defaultPreferences;
+  }
 
   public async selectExecutionOptions(defaultOptions: ExecutionOptions): Promise<ExecutionOptions> {
     return defaultOptions;

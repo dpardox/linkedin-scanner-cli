@@ -130,9 +130,7 @@
   "include": [
     "src/config/keywords/**/*.ts",
     "src/**/*.ts",
-    "src/**/*.tsx",
-    "config.scanner.ts",
-    "config.scanner.template.ts"
+    "src/**/*.tsx"
   ],
   "exclude": [
     "node_modules",

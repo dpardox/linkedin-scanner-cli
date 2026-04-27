@@ -1,4 +1,6 @@
 import { createJobCheckerRuntime } from '@apps/factories/job-checker.factory';
+import { createScannerConfig } from '@config/main.config';
+import { ScannerPreferencesFileRepository } from '@config/scanner-preferences-file.repository';
 import { ExecutionOptions } from '@shared/types/execution-options.type';
 
 const defaultExecutionOptions: ExecutionOptions = {
@@ -7,7 +9,19 @@ const defaultExecutionOptions: ExecutionOptions = {
 
 void (async function bootstrap(): Promise<void> {
   const { jobChecker, interaction } = createJobCheckerRuntime();
-  const executionOptions = await interaction.selectExecutionOptions(defaultExecutionOptions);
+  const scannerPreferencesRepository = new ScannerPreferencesFileRepository();
+  const hasSavedPreferences = scannerPreferencesRepository.hasPreferences();
+  const selectedScannerPreferences = await interaction.selectScannerPreferences(
+    scannerPreferencesRepository.read(),
+    hasSavedPreferences,
+  );
+  scannerPreferencesRepository.write(selectedScannerPreferences);
 
-  await jobChecker.run(executionOptions);
+  const scannerConfig = createScannerConfig(selectedScannerPreferences);
+  const executionOptions = await interaction.selectExecutionOptions({
+    ...defaultExecutionOptions,
+    showUnknownJobs: selectedScannerPreferences.showUnknownJobs,
+  });
+
+  await jobChecker.run(scannerConfig, executionOptions);
 })();

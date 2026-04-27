@@ -1,19 +1,64 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-const runMock = vi.fn().mockResolvedValue(undefined);
-const defaultExecutionOptions = {
-  showUnknownJobs: false,
-};
-const selectExecutionOptionsMock = vi.fn().mockResolvedValue(defaultExecutionOptions);
+const mocks = vi.hoisted(() => {
+  const scannerPreferences = {
+    searchQueries: ['angular'],
+    locationKeys: ['colombia'],
+    languages: ['spa'],
+    restrictedLocations: [],
+    filters: {
+      workType: '2',
+      easyApply: true,
+    },
+    includeRuleIds: ['angular'],
+    excludeRuleIds: ['english'],
+    includeKeywords: [],
+    excludeKeywords: [],
+    contentSearchQuery: '"desarrollador angular"',
+    showUnknownJobs: true,
+  };
+  const scannerConfig = {
+    defaultJobSearchFilters: {},
+    jobSearchConfigs: [],
+    contentSearchQuery: scannerPreferences.contentSearchQuery,
+  };
+
+  return {
+    run: vi.fn().mockResolvedValue(undefined),
+    writePreferences: vi.fn(),
+    createScannerConfig: vi.fn(() => scannerConfig),
+    hasPreferences: vi.fn(() => true),
+    readPreferences: vi.fn(() => scannerPreferences),
+    selectScannerPreferences: vi.fn().mockResolvedValue(scannerPreferences),
+    selectExecutionOptions: vi.fn().mockResolvedValue({
+      showUnknownJobs: scannerPreferences.showUnknownJobs,
+    }),
+    scannerConfig,
+    scannerPreferences,
+  };
+});
 
 vi.mock('@apps/factories/job-checker.factory', () => ({
   createJobCheckerRuntime: vi.fn(() => ({
     jobChecker: {
-      run: runMock,
+      run: mocks.run,
     },
     interaction: {
-      selectExecutionOptions: selectExecutionOptionsMock,
+      selectScannerPreferences: mocks.selectScannerPreferences,
+      selectExecutionOptions: mocks.selectExecutionOptions,
     },
+  })),
+}));
+
+vi.mock('@config/main.config', () => ({
+  createScannerConfig: mocks.createScannerConfig,
+}));
+
+vi.mock('@config/scanner-preferences-file.repository', () => ({
+  ScannerPreferencesFileRepository: vi.fn(() => ({
+    hasPreferences: mocks.hasPreferences,
+    read: mocks.readPreferences,
+    write: mocks.writePreferences,
   })),
 }));
 
@@ -21,19 +66,27 @@ describe('Main', () => {
 
   beforeEach(() => {
     vi.resetModules();
-    runMock.mockClear();
-    selectExecutionOptionsMock.mockClear();
+    mocks.run.mockClear();
+    mocks.writePreferences.mockClear();
+    mocks.createScannerConfig.mockClear();
+    mocks.hasPreferences.mockClear();
+    mocks.readPreferences.mockClear();
+    mocks.selectScannerPreferences.mockClear();
+    mocks.selectExecutionOptions.mockClear();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  test('should initialize the application', async () => {
+  test('should initialize the application with saved scanner preferences', async () => {
     await import('./main');
 
-    expect(selectExecutionOptionsMock).toHaveBeenCalledWith(defaultExecutionOptions);
-    expect(runMock).toHaveBeenCalledWith(defaultExecutionOptions);
+    expect(mocks.selectScannerPreferences).toHaveBeenCalledWith(mocks.scannerPreferences, true);
+    expect(mocks.writePreferences).toHaveBeenCalledWith(mocks.scannerPreferences);
+    expect(mocks.createScannerConfig).toHaveBeenCalledWith(mocks.scannerPreferences);
+    expect(mocks.selectExecutionOptions).toHaveBeenCalledWith({ showUnknownJobs: true });
+    expect(mocks.run).toHaveBeenCalledWith(mocks.scannerConfig, { showUnknownJobs: true });
   });
 
 });

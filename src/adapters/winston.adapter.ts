@@ -5,15 +5,26 @@ import { render } from 'ink';
 import { createLogger, Logger, format, transports } from 'winston';
 import { addColors } from 'winston/lib/winston/config';
 import { PersistedJobRuleManager } from '@config/rules';
+import { LanguageCode } from '@enums/language-code.enum';
+import { Location } from '@enums/location.enum';
+import { WorkType } from '@enums/work-type.enum';
 import { InteractionPort } from '@ports/interaction.port';
 import { ForYouEntry, JobCounter, LoggerContext, LoggerPort } from '@ports/logger.port';
 import { ExecutionOptions } from '@shared/types/execution-options.type';
 import { ManualReviewEntry } from '@shared/types/manual-review-entry.type';
+import { LocationKey, ScannerPreferences } from '@shared/types/scanner-preferences.type';
 import { UndeterminedQueueEntry } from '@shared/types/undetermined-queue-entry.type';
 import { InkTerminalApp } from '@tui/terminal-app';
+import { selectTerminalOptions } from '@tui/multi-select-prompt';
 import { TerminalSessionStore } from '@tui/terminal-session.store';
+import { askTerminalText } from '@tui/text-prompt';
 
 type LogLevel = 'error' | 'success' | 'warn' | 'info';
+
+type MenuOption<T extends string> = {
+  label: string;
+  value: T;
+};
 
 type WinstonAdapterOptions = {
   ruleManager?: PersistedJobRuleManager;
@@ -21,9 +32,30 @@ type WinstonAdapterOptions = {
 
 export class WinstonAdapter implements LoggerPort, InteractionPort {
 
-  private static readonly showUnknownJobsQuestion = 'Show unknown jobs? (y/N) ';
   private static readonly showUnknownJobsAnswerYes = 'y';
   private static readonly showUnknownJobsAnswerNo = 'n';
+  private static readonly terminalColorReset = '\u001B[0m';
+  private static readonly terminalGreen = '\u001B[32m';
+  private static readonly terminalYellow = '\u001B[33m';
+  private static readonly locationOptions = Object.keys(Location)
+    .filter((locationKey) => Number.isNaN(Number(locationKey)))
+    .map((locationKey) => ({
+      label: WinstonAdapter.humanizeLocationKey(locationKey),
+      value: locationKey as LocationKey,
+    }));
+  private static readonly languageOptions: Array<MenuOption<string>> = [
+    { label: 'English (eng)', value: LanguageCode.english },
+    { label: 'Spanish (spa)', value: LanguageCode.spanish },
+    { label: 'Portuguese (por)', value: LanguageCode.portuguese },
+    { label: 'French (fra)', value: LanguageCode.french },
+    { label: 'German (deu)', value: LanguageCode.german },
+    { label: 'Italian (ita)', value: LanguageCode.italian },
+  ];
+  private static readonly workTypeOptions: Array<MenuOption<WorkType>> = [
+    { label: 'Remote', value: WorkType.remote },
+    { label: 'Hybrid', value: WorkType.hybrid },
+    { label: 'On site', value: WorkType.onSite },
+  ];
 
   private readonly logger: Logger;
   private readonly interactive = Boolean(process.stdout.isTTY);
@@ -105,10 +137,24 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
     process.stdout.write('\n');
   }
 
+  public async selectScannerPreferences(
+    defaultPreferences: ScannerPreferences,
+    hasSavedPreferences: boolean,
+  ): Promise<ScannerPreferences> {
+    if (!this.interactiveInput) {
+      return defaultPreferences;
+    }
+
+    if (hasSavedPreferences && !await this.askShouldEditSavedPreferences()) {
+      return defaultPreferences;
+    }
+
+    return await this.askScannerPreferences(defaultPreferences);
+  }
+
   public async selectExecutionOptions(defaultOptions: ExecutionOptions): Promise<ExecutionOptions> {
-    const executionOptions = await this.askExecutionOptions(defaultOptions);
     this.ensureInkRenderer();
-    return executionOptions;
+    return defaultOptions;
   }
 
   public startManualReview(review: ManualReviewEntry): void {
@@ -183,32 +229,135 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
     process.stdin.resume();
   }
 
-  private async askExecutionOptions(defaultOptions: ExecutionOptions): Promise<ExecutionOptions> {
-    if (!this.interactiveInput) {
-      return defaultOptions;
-    }
+  private async askShouldEditSavedPreferences(): Promise<boolean> {
+    const answer = await this.askReadlineQuestion('Edit saved scanner preferences', 'Edit saved scanner preferences? (y/N) ');
+    return this.parseBooleanAnswer(answer, false);
+  }
+
+  private async askScannerPreferences(defaultPreferences: ScannerPreferences): Promise<ScannerPreferences> {
+    const searchQueries = await this.askTextList('Search queries', defaultPreferences.searchQueries);
+    const locationKeys = await this.askLocationKeys(defaultPreferences.locationKeys);
+    const languages = await this.askLanguages(defaultPreferences.languages);
+    const workType = await this.askWorkType(defaultPreferences.filters.workType);
+    const easyApply = await this.askBoolean('Easy Apply only?', defaultPreferences.filters.easyApply ?? true);
+    const includeRuleIds = await this.askTextList('Include rule IDs', defaultPreferences.includeRuleIds);
+    const excludeRuleIds = await this.askTextList('Exclude rule IDs', defaultPreferences.excludeRuleIds);
+    const contentSearchQuery = await this.askText('Final content search query', defaultPreferences.contentSearchQuery);
+    const showUnknownJobs = await this.askBoolean('Show unknown jobs?', defaultPreferences.showUnknownJobs);
 
     return {
-      ...defaultOptions,
-      showUnknownJobs: await this.askShowUnknownJobs(defaultOptions.showUnknownJobs),
+      ...defaultPreferences,
+      searchQueries,
+      locationKeys,
+      languages,
+      filters: {
+        ...defaultPreferences.filters,
+        workType,
+        easyApply,
+      },
+      includeRuleIds,
+      excludeRuleIds,
+      contentSearchQuery,
+      showUnknownJobs,
     };
   }
 
-  private async askShowUnknownJobs(defaultShowUnknownJobs: boolean): Promise<boolean> {
+  private async askTextList(
+    label: string,
+    defaultValues: string[],
+  ): Promise<string[]> {
+    const answer = await askTerminalText(label, defaultValues.join(', '));
+    const values = this.parseTextList(answer);
+    if (!values.length) return defaultValues;
+
+    return values;
+  }
+
+  private async askLocationKeys(defaultLocationKeys: LocationKey[]): Promise<LocationKey[]> {
+    return await selectTerminalOptions({
+      title: 'Countries or locations',
+      options: WinstonAdapter.locationOptions,
+      selectedValues: defaultLocationKeys,
+    });
+  }
+
+  private async askLanguages(defaultLanguages: string[]): Promise<string[]> {
+    return await selectTerminalOptions({
+      title: 'Languages',
+      options: WinstonAdapter.languageOptions,
+      selectedValues: defaultLanguages,
+    });
+  }
+
+  private async askWorkType(defaultWorkType?: WorkType): Promise<WorkType | undefined> {
+    const selectedWorkTypes = await selectTerminalOptions({
+      title: 'Work type',
+      options: WinstonAdapter.workTypeOptions,
+      selectedValues: defaultWorkType ? [defaultWorkType] : [],
+      multiple: false,
+    });
+
+    return selectedWorkTypes[0];
+  }
+
+  private async askBoolean(
+    label: string,
+    defaultValue: boolean,
+  ): Promise<boolean> {
+    const selectedValue = await selectTerminalOptions({
+      title: label,
+      options: [
+        { label: 'Yes', value: WinstonAdapter.showUnknownJobsAnswerYes },
+        { label: 'No', value: WinstonAdapter.showUnknownJobsAnswerNo },
+      ],
+      selectedValues: [defaultValue ? WinstonAdapter.showUnknownJobsAnswerYes : WinstonAdapter.showUnknownJobsAnswerNo],
+      multiple: false,
+    });
+
+    return selectedValue[0] === WinstonAdapter.showUnknownJobsAnswerYes;
+  }
+
+  private async askText(
+    label: string,
+    defaultValue: string,
+  ): Promise<string> {
+    const answer = await askTerminalText(label, defaultValue);
+    const value = answer.trim();
+    if (!value) return defaultValue;
+
+    return value;
+  }
+
+  private async askReadlineQuestion(label: string, question: string): Promise<string> {
+    process.stdin.setRawMode?.(false);
+    process.stdin.resume();
+
     const readline = createInterface({
       input: process.stdin,
       output: process.stdout,
     });
 
     try {
-      const answer = await readline.question(WinstonAdapter.showUnknownJobsQuestion);
-      return this.parseShowUnknownJobsAnswer(answer, defaultShowUnknownJobs);
+      const answer = await readline.question(`${WinstonAdapter.terminalYellow}›${WinstonAdapter.terminalColorReset} ${question}`);
+      this.replaceLastTerminalLine(`${WinstonAdapter.terminalGreen}✔${WinstonAdapter.terminalColorReset} ${label}`);
+      return answer;
     } finally {
       readline.close();
     }
   }
 
-  private parseShowUnknownJobsAnswer(answer: string, defaultShowUnknownJobs: boolean): boolean {
+  private replaceLastTerminalLine(value: string): void {
+    process.stdout.write(`\u001B[1A\u001B[2K${value}\n`);
+  }
+
+  private parseTextList(answer: string): string[] {
+    return answer
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+  }
+
+  private parseBooleanAnswer(answer: string, defaultValue: boolean): boolean {
     const normalizedAnswer = answer.trim().toLowerCase();
 
     if (normalizedAnswer === WinstonAdapter.showUnknownJobsAnswerYes) {
@@ -219,7 +368,13 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
       return false;
     }
 
-    return defaultShowUnknownJobs;
+    return defaultValue;
+  }
+
+  private static humanizeLocationKey(locationKey: string): string {
+    return locationKey
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/^./, (firstCharacter) => firstCharacter.toUpperCase());
   }
 
   private track(level: LogLevel, message: string, args: unknown[]): void {

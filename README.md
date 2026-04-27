@@ -23,13 +23,26 @@ The session state is stored at `.auth/linkedin-storage-state.json`.
 
 If LinkedIn closes the session, delete that file, run `npm start`, and log in manually again.
 
-### Configuration
+### Scanner setup
 
-Copy the `config.scanner.template.ts` file to `config.scanner.ts` and adjust the configuration as needed.
+Run `npm start`. On the first run, the terminal asks for the scanner preferences:
 
-Include/exclude matching rules now live in `rules/catalog.jsonl`. The config uses `createKeywordsFromPersistedRules(...)` to select rule IDs and can still append one-off keywords with `includeKeywords` and `excludeKeywords`.
+- search queries
+- countries or locations
+- languages
+- work type
+- Easy Apply
+- include and exclude rule IDs
+- final content search query
+- whether unknown jobs should be shown
 
-If `rules/catalog.jsonl` does not exist yet, the scanner seeds it automatically from the current built-in rule packs the first time the config is loaded.
+The answers are saved in `.scanner/preferences.json` and reused automatically on later runs. When saved preferences exist, `npm start` asks whether you want to edit them before scanning.
+
+In option lists, use arrows to move, Space to select or unselect, and Enter to continue.
+
+Include/exclude matching rules live in `rules/catalog.jsonl`. The setup menu selects rule IDs and can still reuse rules saved during manual review.
+
+If `rules/catalog.jsonl` does not exist yet, the scanner seeds it automatically from the current built-in rule packs.
 
 The scanner automatically runs each configured search in this order:
 
@@ -37,7 +50,7 @@ The scanner automatically runs each configured search in this order:
 2. Last week
 3. Last month
 
-Do not set `timePostedRange` manually in the config.
+The setup does not ask for `timePostedRange` because those ranges are handled automatically.
 
 Run `npm i` to install the dependencies.
 

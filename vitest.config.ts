@@ -21,7 +21,6 @@ export default defineConfig({
       '@enums': path.resolve(rootDir, 'src/shared/enums'),
       '@utils': path.resolve(rootDir, 'src/shared/utils'),
       '@shared': path.resolve(rootDir, 'src/shared'),
-      'config.scanner': path.resolve(rootDir, 'config.scanner.ts'),
       src: path.resolve(rootDir, 'src'),
     },
   },
