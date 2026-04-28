@@ -227,15 +227,31 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
   }
 
   private async askScannerPreferences(defaultPreferences: ScannerPreferences): Promise<ScannerPreferences> {
-    const searchQueries = await this.askTextList('Search queries', defaultPreferences.searchQueries);
+    const searchQueries = await this.askTextList(
+      'Which search queries should LinkedIn scan?',
+      'Separate multiple search queries with commas. Press Enter to keep the current value.',
+      defaultPreferences.searchQueries,
+    );
     const locationKeys = await this.askLocationKeys(defaultPreferences.locationKeys);
     const languages = await this.askLanguages(defaultPreferences.languages);
     const workType = await this.askWorkType(defaultPreferences.filters.workType);
-    const easyApply = await this.askBoolean('Easy Apply only?', defaultPreferences.filters.easyApply ?? true);
+    const easyApply = await this.askBoolean(
+      'Should LinkedIn scan only Easy Apply jobs?',
+      'Select Yes or No. Press Enter to keep the current selection.',
+      defaultPreferences.filters.easyApply ?? true,
+    );
     const includeRuleIds = await this.askIncludeKeywordRuleIds(defaultPreferences.includeRuleIds);
     const excludeRuleIds = await this.askExcludeKeywordRuleIds(defaultPreferences.excludeRuleIds, includeRuleIds);
-    const contentSearchQuery = await this.askText('Final content search query', defaultPreferences.contentSearchQuery);
-    const showUnknownJobs = await this.askBoolean('Show unknown jobs?', defaultPreferences.showUnknownJobs);
+    const contentSearchQuery = await this.askText(
+      'Which LinkedIn posts search should open at the end?',
+      'This posts search opens after the job scan. Press Enter to keep the current value.',
+      defaultPreferences.contentSearchQuery,
+    );
+    const showUnknownJobs = await this.askBoolean(
+      'Should unknown jobs be reviewed manually?',
+      'Select Yes to open them for review or No to mark them as unknown automatically.',
+      defaultPreferences.showUnknownJobs,
+    );
 
     return {
       ...defaultPreferences,
@@ -255,10 +271,11 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
   }
 
   private async askTextList(
-    label: string,
+    question: string,
+    detail: string,
     defaultValues: string[],
   ): Promise<string[]> {
-    const answer = await askTerminalText(label, defaultValues.join(', '));
+    const answer = await askTerminalText(question, defaultValues.join(', '), detail);
     const values = this.parseTextList(answer);
     if (!values.length) return defaultValues;
 
@@ -267,7 +284,8 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
 
   private async askLocationKeys(defaultLocationKeys: LocationKey[]): Promise<LocationKey[]> {
     return await selectTerminalOptions({
-      title: 'Countries or locations',
+      title: 'Where should LinkedIn search jobs?',
+      detail: 'Select one or more countries or locations. Press Enter to keep the current selection.',
       options: WinstonAdapter.locationOptions,
       selectedValues: defaultLocationKeys,
     });
@@ -275,7 +293,8 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
 
   private async askLanguages(defaultLanguages: string[]): Promise<string[]> {
     return await selectTerminalOptions({
-      title: 'Languages',
+      title: 'Which job post languages should pass the scanner?',
+      detail: 'Select every acceptable language. Press Enter to keep the current selection.',
       options: WinstonAdapter.languageOptions,
       selectedValues: defaultLanguages,
     });
@@ -283,7 +302,8 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
 
   private async askWorkType(defaultWorkType?: WorkType): Promise<WorkType | undefined> {
     const selectedWorkTypes = await selectTerminalOptions({
-      title: 'Work type',
+      title: 'Which work type should LinkedIn use?',
+      detail: 'Select one work type. Press Enter to keep the current selection.',
       options: WinstonAdapter.workTypeOptions,
       selectedValues: defaultWorkType ? [defaultWorkType] : [],
       multiple: false,
@@ -293,11 +313,13 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
   }
 
   private async askBoolean(
-    label: string,
+    title: string,
+    detail: string,
     defaultValue: boolean,
   ): Promise<boolean> {
     const selectedValue = await selectTerminalOptions({
-      title: label,
+      title,
+      detail,
       options: [
         { label: 'Yes', value: WinstonAdapter.showUnknownJobsAnswerYes },
         { label: 'No', value: WinstonAdapter.showUnknownJobsAnswerNo },
@@ -310,7 +332,13 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
   }
 
   private async askIncludeKeywordRuleIds(defaultRuleIds: string[]): Promise<string[]> {
-    return await this.askRuleIds('Include keywords', defaultRuleIds, [], this.listKeywordRules());
+    return await this.askRuleIds(
+      'Which keyword groups should mark a job as relevant?',
+      'Select the keyword groups that should include a job. Press Enter to keep the current selection.',
+      defaultRuleIds,
+      [],
+      this.listKeywordRules(),
+    );
   }
 
   private async askExcludeKeywordRuleIds(
@@ -318,11 +346,18 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
     includeRuleIds: string[],
   ): Promise<string[]> {
     const defaultExcludeRuleIds = defaultRuleIds.filter((ruleId) => !includeRuleIds.includes(ruleId));
-    return await this.askRuleIds('Exclude keywords', defaultExcludeRuleIds, includeRuleIds, this.listRules());
+    return await this.askRuleIds(
+      'Which keyword groups should discard a job?',
+      'Select keyword groups or terms that should exclude a job. Press Enter to keep the current selection.',
+      defaultExcludeRuleIds,
+      includeRuleIds,
+      this.listRules(),
+    );
   }
 
   private async askRuleIds(
     title: string,
+    detail: string,
     defaultRuleIds: string[],
     hiddenKeywordRuleIds: string[] = [],
     rules: PersistedJobRule[],
@@ -332,6 +367,7 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
 
     const selectedKeywordRuleIds = await selectTerminalOptions({
       title,
+      detail,
       options: keywordOptions,
       selectedValues: this.getSelectedRuleIds(defaultRuleIds, hiddenKeywordRuleIds, rules),
     });
@@ -399,10 +435,11 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
   }
 
   private async askText(
-    label: string,
+    question: string,
+    detail: string,
     defaultValue: string,
   ): Promise<string> {
-    const answer = await askTerminalText(label, defaultValue);
+    const answer = await askTerminalText(question, defaultValue, detail);
     const value = answer.trim();
     if (!value) return defaultValue;
 

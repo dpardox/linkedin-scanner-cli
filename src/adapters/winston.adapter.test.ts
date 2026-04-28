@@ -270,14 +270,24 @@ describe('WinstonAdapter', () => {
     try {
       await expect(interactiveWinstonAdapter.selectScannerPreferences(preferences)).resolves.toEqual(preferences);
 
-      expect(mockAskTerminalText).toHaveBeenCalledWith('Search queries', 'angular');
-      expect(mockAskTerminalText).toHaveBeenCalledWith('Final content search query', '"desarrollador angular"');
+      expect(mockAskTerminalText).toHaveBeenCalledWith(
+        'Which search queries should LinkedIn scan?',
+        'angular',
+        'Separate multiple search queries with commas. Press Enter to keep the current value.',
+      );
+      expect(mockAskTerminalText).toHaveBeenCalledWith(
+        'Which LinkedIn posts search should open at the end?',
+        '"desarrollador angular"',
+        'This posts search opens after the job scan. Press Enter to keep the current value.',
+      );
       expect(mockSelectTerminalOptions).toHaveBeenCalledWith(expect.objectContaining({
-        title: 'Countries or locations',
+        title: 'Where should LinkedIn search jobs?',
+        detail: 'Select one or more countries or locations. Press Enter to keep the current selection.',
         selectedValues: ['colombia'],
       }));
       expect(mockSelectTerminalOptions).toHaveBeenCalledWith(expect.objectContaining({
-        title: 'Include keywords',
+        title: 'Which keyword groups should mark a job as relevant?',
+        detail: 'Select the keyword groups that should include a job. Press Enter to keep the current selection.',
         options: [
           {
             label: 'Angular',
@@ -295,7 +305,8 @@ describe('WinstonAdapter', () => {
         selectedValues: ['angular'],
       }));
       expect(mockSelectTerminalOptions).toHaveBeenCalledWith(expect.objectContaining({
-        title: 'Exclude keywords',
+        title: 'Which keyword groups should discard a job?',
+        detail: 'Select keyword groups or terms that should exclude a job. Press Enter to keep the current selection.',
         options: [
           {
             label: '.NET',
@@ -313,7 +324,8 @@ describe('WinstonAdapter', () => {
         selectedValues: ['english'],
       }));
       expect(mockSelectTerminalOptions).toHaveBeenCalledWith(expect.objectContaining({
-        title: 'Show unknown jobs?',
+        title: 'Should unknown jobs be reviewed manually?',
+        detail: 'Select Yes to open them for review or No to mark them as unknown automatically.',
         selectedValues: ['n'],
       }));
       expect(mockRender).not.toHaveBeenCalled();

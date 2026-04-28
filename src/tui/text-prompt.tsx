@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Box, Text, render, useInput } from 'ink';
 
 type TerminalTextPromptProps = {
-  title: string;
+  question: string;
+  detail: string;
   defaultValue: string;
   onSubmit: (value: string) => void;
 };
@@ -11,7 +12,13 @@ const inputActivationDelayMs = 100;
 const terminalColorReset = '\u001B[0m';
 const terminalGreen = '\u001B[32m';
 
-export async function askTerminalText(title: string, defaultValue: string): Promise<string> {
+const defaultTextPromptDetail = 'Edit the value, or press Enter to keep the current value.';
+
+export async function askTerminalText(
+  question: string,
+  defaultValue: string,
+  detail = defaultTextPromptDetail,
+): Promise<string> {
   process.stdin.resume();
 
   return await new Promise((resolve) => {
@@ -24,13 +31,14 @@ export async function askTerminalText(title: string, defaultValue: string): Prom
       currentInkRenderer?.clear();
       currentInkRenderer?.unmount();
       await currentInkRenderer?.waitUntilExit();
-      process.stdout.write(`${terminalGreen}✔${terminalColorReset} ${title}\n`);
+      process.stdout.write(`${terminalGreen}✔${terminalColorReset} ${question}\n`);
       resolve(selectedValue);
     };
 
     inkRenderer = render(
       <TerminalTextPrompt
-        title={title}
+        question={question}
+        detail={detail}
         defaultValue={defaultValue}
         onSubmit={submitValue}
       />,
@@ -42,7 +50,8 @@ export async function askTerminalText(title: string, defaultValue: string): Prom
 }
 
 function TerminalTextPrompt({
-  title,
+  question,
+  detail,
   defaultValue,
   onSubmit,
 }: TerminalTextPromptProps): React.JSX.Element {
@@ -113,13 +122,13 @@ function TerminalTextPrompt({
 
   return (
     <Box flexDirection="column">
-      <Text><Text color="yellow">›</Text> <Text bold>{title}</Text></Text>
+      <Text><Text color="yellow">›</Text> <Text bold>{question}</Text></Text>
       <Text>
         <Text>{value.slice(0, cursorOffset)}</Text>
         <Text color="cyan">|</Text>
         <Text>{value.slice(cursorOffset)}</Text>
       </Text>
-      <Text dimColor>Type a value, or press Enter to keep current.</Text>
+      <Text dimColor>({detail})</Text>
     </Box>
   );
 }

@@ -8,6 +8,7 @@ export type TerminalMultiSelectOption<T extends string> = {
 
 type TerminalMultiSelectPromptProps<T extends string> = {
   title: string;
+  detail: string;
   options: Array<TerminalMultiSelectOption<T>>;
   selectedValues: T[];
   multiple?: boolean;
@@ -23,14 +24,16 @@ type ListedItem = {
 const inputActivationDelayMs = 100;
 const terminalColorReset = '\u001B[0m';
 const terminalGreen = '\u001B[32m';
+const defaultMultiSelectPromptDetail = 'Use arrows to move, Space to toggle, Enter to continue.';
 
 export async function selectTerminalOptions<T extends string>({
   title,
+  detail = defaultMultiSelectPromptDetail,
   options,
   selectedValues,
   multiple = true,
   limit = 12,
-}: Omit<TerminalMultiSelectPromptProps<T>, 'onSubmit'>): Promise<T[]> {
+}: Omit<TerminalMultiSelectPromptProps<T>, 'onSubmit' | 'detail'> & { detail?: string }): Promise<T[]> {
   process.stdin.resume();
 
   return await new Promise((resolve) => {
@@ -49,6 +52,7 @@ export async function selectTerminalOptions<T extends string>({
     inkRenderer = render(
       <TerminalMultiSelectPrompt
         title={title}
+        detail={detail}
         options={options}
         selectedValues={selectedValues}
         multiple={multiple}
@@ -64,6 +68,7 @@ export async function selectTerminalOptions<T extends string>({
 
 function TerminalMultiSelectPrompt<T extends string>({
   title,
+  detail,
   options,
   selectedValues,
   multiple = true,
@@ -135,7 +140,7 @@ function TerminalMultiSelectPrompt<T extends string>({
           <Text color={isHighlighted(items, item, highlightedIndex) ? 'blue' : undefined}>{item.label}</Text>
         </Box>
       ))}
-      <Text dimColor>Use arrows to move, Space to toggle, Enter to continue.</Text>
+      <Text dimColor>({detail})</Text>
     </Box>
   );
 }
