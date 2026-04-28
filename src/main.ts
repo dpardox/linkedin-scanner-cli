@@ -11,7 +11,13 @@ void (async function bootstrap(): Promise<void> {
   const { jobChecker, interaction } = createJobCheckerRuntime();
   const scannerPreferencesRepository = new ScannerPreferencesFileRepository();
   const selectedScannerPreferences = await interaction.selectScannerPreferences(scannerPreferencesRepository.read());
-  scannerPreferencesRepository.write(selectedScannerPreferences);
+  await interaction.runAction({
+    runningText: 'Saving scanner configuration',
+    successText: 'Saved scanner configuration',
+    failureText: 'Failed to save scanner configuration',
+  }, () => {
+    scannerPreferencesRepository.write(selectedScannerPreferences);
+  });
 
   const scannerConfig = createScannerConfig(selectedScannerPreferences);
   const executionOptions = await interaction.selectExecutionOptions({

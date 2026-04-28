@@ -28,6 +28,7 @@
     "franc": "^6.2.0",
     "ink": "^7.0.0",
     "ink-link": "^5.0.0",
+    "ink-spawn": "^0.1.4",
     "playwright": "^1.52.0",
     "react": "^19.2.5",
     "winston": "^3.17.0"

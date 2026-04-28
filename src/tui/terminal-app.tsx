@@ -1,18 +1,28 @@
-import React, { useEffect, useState, useSyncExternalStore } from 'react';
+import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Box, Text, useInput, type Key } from 'ink';
 import Link from 'ink-link';
+import { Spawn } from 'ink-spawn';
 import { LoggerContext } from '@ports/logger.port';
 import {
   TerminalInputKey,
   TerminalLogEntry,
   TerminalRuleDraft,
   TerminalSessionSnapshot,
+  TerminalSpawnAction,
   TerminalSessionStore,
 } from '@tui/terminal-session.store';
 
 type InkTerminalAppProps = {
   store: TerminalSessionStore;
 };
+
+type SessionSummaryRow = {
+  label: string;
+  value: string;
+};
+
+const actionStatusPollIntervalMs = 50;
+const actionStatusTimeoutMs = 30000;
 
 export function InkTerminalApp({ store }: InkTerminalAppProps): React.JSX.Element {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
@@ -79,6 +89,7 @@ function ManualReviewView({ snapshot }: { snapshot: TerminalSessionSnapshot }): 
       <Box marginTop={2}>
         <SessionSummary snapshot={snapshot} />
       </Box>
+      <TerminalActionList actions={snapshot.spawnActions} />
       <Box marginTop={2} flexDirection="column">
         <Text dimColor>Recent activity</Text>
         {renderActivityLines(snapshot.recentLogs)}
@@ -103,6 +114,7 @@ function RunningView({ snapshot }: { snapshot: TerminalSessionSnapshot }): React
       <Box marginTop={2}>
         <SessionSummary snapshot={snapshot} />
       </Box>
+      <TerminalActionList actions={snapshot.spawnActions} />
       <Box marginTop={2} flexDirection="column">
         <Text dimColor>Recent activity</Text>
         {renderActivityLines(snapshot.recentLogs)}
@@ -116,12 +128,96 @@ function SessionSummary({ snapshot }: { snapshot: TerminalSessionSnapshot }): Re
     <Box flexDirection="column">
       <Text bold>Session</Text>
       <Box marginTop={1} flexDirection="column">
-        {buildSessionSummaryLines(snapshot).map((line) => (
-          <Text key={line} dimColor>{line}</Text>
+        {buildSessionSummaryRows(snapshot).map((row) => (
+          <SessionSummaryItem key={row.label} row={row} />
         ))}
       </Box>
     </Box>
   );
+}
+
+function SessionSummaryItem({ row }: { row: SessionSummaryRow }): React.JSX.Element {
+  return (
+    <Box>
+      <Box width={12} marginRight={1}>
+        <Text dimColor>{row.label}</Text>
+      </Box>
+      <Text>{row.value}</Text>
+    </Box>
+  );
+}
+
+function TerminalActionList({ actions }: { actions: TerminalSpawnAction[] }): React.JSX.Element | null {
+  if (!actions.length) {
+    return null;
+  }
+
+  return (
+    <Box marginTop={2} flexDirection="column">
+      <Text dimColor>Actions</Text>
+      {actions.slice().reverse().map((action) => (
+        <TerminalSpawnActionView key={action.id} action={action} />
+      ))}
+    </Box>
+  );
+}
+
+function TerminalSpawnActionView({ action }: { action: TerminalSpawnAction }): React.JSX.Element {
+  const previousExitCode = useRef(process.exitCode);
+
+  return (
+    <Spawn
+      command={process.execPath}
+      args={createActionStatusWaiterArgs(action.statusFilePath)}
+      runningText={action.runningText}
+      successText={action.successText}
+      failureText={action.failureText}
+      maxOutputLines={3}
+      onCompletion={(error) => {
+        if (error) {
+          process.exitCode = previousExitCode.current;
+        }
+      }}
+    />
+  );
+}
+
+function createActionStatusWaiterArgs(statusFilePath: string): string[] {
+  return [
+    '-e',
+    [
+      'const fs = require("node:fs/promises");',
+      'const statusFilePath = process.argv[1];',
+      'const pollIntervalMs = Number(process.argv[2]);',
+      'const timeoutMs = Number(process.argv[3]);',
+      'const sleep = (durationMs) => new Promise((resolve) => setTimeout(resolve, durationMs));',
+      'async function readStatus() {',
+      '  try {',
+      '    return JSON.parse(await fs.readFile(statusFilePath, "utf-8"));',
+      '  } catch {',
+      '    return undefined;',
+      '  }',
+      '}',
+      'async function waitForStatus() {',
+      '  const startedAt = Date.now();',
+      '  while (Date.now() - startedAt < timeoutMs) {',
+      '    const status = await readStatus();',
+      '    if (status?.status === "succeeded") process.exit(0);',
+      '    if (status?.status === "failed") {',
+      '      if (status.message) console.error(status.message);',
+      '      process.exit(1);',
+      '    }',
+      '    await sleep(pollIntervalMs);',
+      '  }',
+      '  console.error("Action timed out.");',
+      '  process.exit(1);',
+      '}',
+      'void waitForStatus();',
+    ].join('\n'),
+    statusFilePath,
+    String(actionStatusPollIntervalMs),
+    String(actionStatusTimeoutMs),
+  ];
 }
 
 function TerminalFooter({ snapshot }: { snapshot: TerminalSessionSnapshot }): React.JSX.Element {
@@ -147,14 +243,14 @@ function renderActivityLines(recentLogs: TerminalLogEntry[]): React.JSX.Element[
   ));
 }
 
-function buildSessionSummaryLines(snapshot: TerminalSessionSnapshot): string[] {
+function buildSessionSummaryRows(snapshot: TerminalSessionSnapshot): SessionSummaryRow[] {
   return [
-    `Phase: ${snapshot.context.phase ?? '-'}`,
-    `Search: ${snapshot.context.searchQuery ?? '-'}`,
-    `Location: ${snapshot.context.location ?? '-'}`,
-    `Current job: ${snapshot.context.jobId ?? '-'}`,
-    `Rules: include ${snapshot.ruleCatalog.include.length} · exclude ${snapshot.ruleCatalog.exclude.length} · extra exclude ${snapshot.additionalKeywords.exclude.length}`,
-    `Found ${snapshot.jobCounts.found} · Unknown ${snapshot.jobCounts.undetermined} · Discarded ${snapshot.jobCounts.discarded} · Skipped ${snapshot.jobCounts.skipped}`,
+    { label: 'Phase', value: snapshot.context.phase ?? '-' },
+    { label: 'Search', value: snapshot.context.searchQuery ?? '-' },
+    { label: 'Location', value: String(snapshot.context.location ?? '-') },
+    { label: 'Current job', value: snapshot.context.jobId ?? '-' },
+    { label: 'Rules', value: `include ${snapshot.ruleCatalog.include.length} | exclude ${snapshot.ruleCatalog.exclude.length} | extra exclude ${snapshot.additionalKeywords.exclude.length}` },
+    { label: 'Jobs', value: `found ${snapshot.jobCounts.found} | unknown ${snapshot.jobCounts.undetermined} | discarded ${snapshot.jobCounts.discarded} | skipped ${snapshot.jobCounts.skipped}` },
   ];
 }
 

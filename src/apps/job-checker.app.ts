@@ -306,7 +306,15 @@ export class JobCheckerApp {
     this.logger.setContext({ phase: 'Extracting job details', jobId });
     await this.jobsSearchPage.selectJob(jobId);
     const jobModel = await this.jobsSearchPage.getJobDetails(jobId);
-    return await this.jobRepository.upsert(jobId, jobModel);
+    return await this.serializeJob(jobId, async () => await this.jobRepository.upsert(jobId, jobModel));
+  }
+
+  private async serializeJob<T>(jobId: string, action: () => Promise<T>): Promise<T> {
+    return await this.interaction.runAction({
+      runningText: `Serializing job "${jobId}"`,
+      successText: `Serialized job "${jobId}"`,
+      failureText: `Failed to serialize job "${jobId}"`,
+    }, action);
   }
 
   private async isDissmissedJob(jobId: string): Promise<boolean> {
@@ -487,7 +495,9 @@ export class JobCheckerApp {
   }
 
   private async updateJobStatus(jobId: string, status: JobStatus): Promise<void> {
-    await this.jobRepository.update(jobId, { status });
+    await this.serializeJob(jobId, async () => {
+      await this.jobRepository.update(jobId, { status });
+    });
   }
 
   private createUndeterminedQueueEntry(job: JobModel): UndeterminedQueueEntry {

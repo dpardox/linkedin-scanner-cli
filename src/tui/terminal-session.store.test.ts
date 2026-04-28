@@ -71,6 +71,34 @@ describe('TerminalSessionStore', () => {
     expect(store.getSnapshot().excludeDraft.cursorOffset).toBe(0);
   });
 
+  test('should track spawn actions for terminal feedback', () => {
+    const store = new TerminalSessionStore(true, {
+      preferencesRepository: createPreferencesRepository(),
+      ruleManager: createRuleManager(),
+    });
+
+    const action = store.startAction({
+      runningText: 'Saving scanner configuration',
+      successText: 'Saved scanner configuration',
+      failureText: 'Failed to save scanner configuration',
+    });
+
+    expect(store.getSnapshot().spawnActions[0]).toMatchObject({
+      id: action.id,
+      runningText: 'Saving scanner configuration',
+      successText: 'Saved scanner configuration',
+      failureText: 'Failed to save scanner configuration',
+    });
+
+    store.completeAction(action.id);
+
+    expect(fs.existsSync(action.statusFilePath)).toBe(true);
+
+    store.removeActionResources(action.id);
+
+    expect(fs.existsSync(path.dirname(action.statusFilePath))).toBe(false);
+  });
+
   test('should save exclude rules from prefixed footer input', () => {
     const store = new TerminalSessionStore(true, {
       preferencesRepository: createPreferencesRepository(),

@@ -8,7 +8,7 @@ import { PersistedJobRule } from '@config/rules/persisted-job-rule.type';
 import { LanguageCode } from '@enums/language-code.enum';
 import { Location } from '@enums/location.enum';
 import { WorkType } from '@enums/work-type.enum';
-import { InteractionPort } from '@ports/interaction.port';
+import { InteractionActionLabels, InteractionPort } from '@ports/interaction.port';
 import { ForYouEntry, JobCounter, LoggerContext, LoggerPort } from '@ports/logger.port';
 import { ExecutionOptions } from '@shared/types/execution-options.type';
 import { ManualReviewEntry } from '@shared/types/manual-review-entry.type';
@@ -152,6 +152,24 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
   public async selectExecutionOptions(defaultOptions: ExecutionOptions): Promise<ExecutionOptions> {
     this.ensureInkRenderer();
     return defaultOptions;
+  }
+
+  public async runAction<T>(labels: InteractionActionLabels, action: () => Promise<T> | T): Promise<T> {
+    if (!this.interactive) {
+      return await action();
+    }
+
+    this.ensureInkRenderer();
+    const terminalAction = this.terminalSessionStore.startAction(labels);
+
+    try {
+      const result = await action();
+      this.terminalSessionStore.completeAction(terminalAction.id);
+      return result;
+    } catch (error) {
+      this.terminalSessionStore.failAction(terminalAction.id, error);
+      throw error;
+    }
   }
 
   public startManualReview(review: ManualReviewEntry): void {

@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => {
     writePreferences: vi.fn(),
     createScannerConfig: vi.fn(() => scannerConfig),
     readPreferences: vi.fn(() => scannerPreferences),
+    runAction: vi.fn(async (_labels, action) => await action()),
     selectScannerPreferences: vi.fn().mockResolvedValue(scannerPreferences),
     selectExecutionOptions: vi.fn().mockResolvedValue({
       showUnknownJobs: scannerPreferences.showUnknownJobs,
@@ -45,6 +46,7 @@ vi.mock('@apps/factories/job-checker.factory', () => ({
     interaction: {
       selectScannerPreferences: mocks.selectScannerPreferences,
       selectExecutionOptions: mocks.selectExecutionOptions,
+      runAction: mocks.runAction,
     },
   })),
 }));
@@ -68,6 +70,7 @@ describe('Main', () => {
     mocks.writePreferences.mockClear();
     mocks.createScannerConfig.mockClear();
     mocks.readPreferences.mockClear();
+    mocks.runAction.mockClear();
     mocks.selectScannerPreferences.mockClear();
     mocks.selectExecutionOptions.mockClear();
   });
@@ -80,6 +83,11 @@ describe('Main', () => {
     await import('./main');
 
     expect(mocks.selectScannerPreferences).toHaveBeenCalledWith(mocks.scannerPreferences);
+    expect(mocks.runAction).toHaveBeenCalledWith({
+      runningText: 'Saving scanner configuration',
+      successText: 'Saved scanner configuration',
+      failureText: 'Failed to save scanner configuration',
+    }, expect.any(Function));
     expect(mocks.writePreferences).toHaveBeenCalledWith(mocks.scannerPreferences);
     expect(mocks.createScannerConfig).toHaveBeenCalledWith(mocks.scannerPreferences);
     expect(mocks.selectExecutionOptions).toHaveBeenCalledWith({ showUnknownJobs: true });

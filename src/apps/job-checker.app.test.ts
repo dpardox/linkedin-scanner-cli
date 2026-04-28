@@ -30,6 +30,7 @@ function createLogger(): LoggerPort {
 function createInteraction() {
   return {
     selectExecutionOptions: vi.fn(),
+    runAction: vi.fn(async (_labels, action) => await action()),
     startManualReview: vi.fn(),
     finishManualReview: vi.fn(),
   };

@@ -1,5 +1,10 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { PersistedJobRuleManager } from '@config/rules';
 import { JobRuleScope, PersistedJobRule } from '@config/rules/persisted-job-rule.type';
+import { InteractionActionLabels } from '@ports/interaction.port';
 import { ScannerPreferencesFileRepository } from '@config/scanner-preferences-file.repository';
 import { ForYouEntry, JobCounter, LoggerContext } from '@ports/logger.port';
 import { ManualReviewEntry } from '@shared/types/manual-review-entry.type';
@@ -37,6 +42,11 @@ export type TerminalRuleDraft = {
   cursorOffset: number;
 };
 
+export type TerminalSpawnAction = InteractionActionLabels & {
+  id: string;
+  statusFilePath: string;
+};
+
 export type ManualReviewState = {
   job: ManualReviewEntry;
 };
@@ -49,6 +59,7 @@ export type TerminalSessionSnapshot = {
   ruleCatalog: TerminalRuleCatalog;
   jobCounts: Record<JobCounter, number>;
   recentLogs: TerminalLogEntry[];
+  spawnActions: TerminalSpawnAction[];
   startedAt: Date;
   undeterminedEntries: UndeterminedQueueEntry[];
   manualReviewState?: ManualReviewState;
@@ -93,6 +104,49 @@ export class TerminalSessionStore {
   public getSnapshot = (): TerminalSessionSnapshot => {
     return this.snapshot;
   };
+
+  public startAction(labels: InteractionActionLabels): TerminalSpawnAction {
+    const spawnAction = this.createSpawnAction(labels);
+    const spawnActions = [
+      spawnAction,
+      ...this.snapshot.spawnActions,
+    ].slice(0, 5);
+
+    this.snapshot = {
+      ...this.snapshot,
+      spawnActions,
+    };
+    this.emit();
+
+    return spawnAction;
+  }
+
+  public completeAction(actionId: string): void {
+    this.writeActionStatus(actionId, {
+      status: 'succeeded',
+    });
+  }
+
+  public failAction(actionId: string, error: unknown): void {
+    this.writeActionStatus(actionId, {
+      status: 'failed',
+      message: this.createActionErrorMessage(error),
+    });
+  }
+
+  public removeActionResources(actionId: string): void {
+    const spawnAction = this.findSpawnAction(actionId);
+    if (!spawnAction) return;
+
+    this.removeSpawnActionResources(spawnAction);
+  }
+
+  private removeSpawnActionResources(spawnAction: TerminalSpawnAction): void {
+    fs.rmSync(path.dirname(spawnAction.statusFilePath), {
+      recursive: true,
+      force: true,
+    });
+  }
 
   public setContext(context: Partial<LoggerContext>): void {
     this.snapshot = {
@@ -417,9 +471,39 @@ export class TerminalSessionStore {
         undetermined: 0,
       },
       recentLogs: [],
+      spawnActions: [],
       startedAt,
       undeterminedEntries: [],
     };
+  }
+
+  private createSpawnAction(labels: InteractionActionLabels): TerminalSpawnAction {
+    const statusDirectoryPath = fs.mkdtempSync(path.join(os.tmpdir(), 'linkedin-scanner-action-'));
+
+    return {
+      id: randomUUID(),
+      statusFilePath: path.join(statusDirectoryPath, 'status.json'),
+      ...labels,
+    };
+  }
+
+  private writeActionStatus(actionId: string, status: { status: 'succeeded' } | { status: 'failed'; message: string }): void {
+    const spawnAction = this.findSpawnAction(actionId);
+    if (!spawnAction) return;
+
+    fs.writeFileSync(spawnAction.statusFilePath, `${JSON.stringify(status)}\n`, 'utf-8');
+  }
+
+  private findSpawnAction(actionId: string): TerminalSpawnAction | undefined {
+    return this.snapshot.spawnActions.find(({ id }) => id === actionId);
+  }
+
+  private createActionErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return String(error);
   }
 
   private createDraft(): TerminalRuleDraft {

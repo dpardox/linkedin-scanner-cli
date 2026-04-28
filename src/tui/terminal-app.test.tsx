@@ -60,8 +60,8 @@ describe('InkTerminalApp', () => {
 
     expect(frame).toContain('LinkedIn scanner is running.');
     expect(frame).toContain('Session');
-    expect(frame).toContain('Rules: include 0 · exclude 0 · extra exclude 0');
-    expect(frame).toContain('Found 0 · Unknown 0 · Discarded 0 · Skipped 0');
+    expect(frame).toContain('include 0 | exclude 0 | extra exclude 0');
+    expect(frame).toContain('found 0 | unknown 0 | discarded 0 | skipped 0');
     expect(frame).not.toContain('Rule catalog');
     expect(frame).not.toContain('Shortlist');
     expect(frame).not.toContain('Review queue');
@@ -138,7 +138,7 @@ describe('InkTerminalApp', () => {
     const updatedFrame = application.lastFrame() ?? '';
 
     expect(updatedFrame).toContain('Saved exclude keyword "typescript".');
-    expect(updatedFrame).toContain('Rules: include 0 · exclude 0 · extra exclude 1');
+    expect(updatedFrame).toContain('include 0 | exclude 0 | extra exclude 1');
     expect(updatedFrame).toContain('typescript');
 
     store.finishManualReview('4386875881');
