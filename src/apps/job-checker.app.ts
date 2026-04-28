@@ -19,6 +19,8 @@ import { TimePostedRange } from '@enums/time-posted-range.enum';
 import { ManualReviewEntry } from '@shared/types/manual-review-entry.type';
 import { UndeterminedQueueEntry } from '@shared/types/undetermined-queue-entry.type';
 import { ScannerConfig } from '@shared/types/scanner-config.type';
+import { randms } from '@utils/randms.util';
+import { sleep } from '@utils/sleep.util';
 
 type JobMatchClassification = 'include' | 'exclude' | 'unknown';
 
@@ -34,6 +36,9 @@ export class JobCheckerApp {
     TimePostedRange.week,
     TimePostedRange.month,
   ];
+
+  private static readonly noJobsFoundHumanDelayFromSeconds = 6;
+  private static readonly noJobsFoundHumanDelayToSeconds = 14;
 
   private jobsSearchPage!: JobsSearchPage;
   private loginPage!: LoginPage;
@@ -175,7 +180,10 @@ export class JobCheckerApp {
     do {
       this.logger.setContext({ phase: `Scanning jobs list (${timePostedRangeLabel})`, jobId: undefined });
       this.logger.br();
-      if (await this.noJobsFound()) break;
+      if (await this.noJobsFound()) {
+        await this.waitBeforeNextSearchAfterNoJobsFound();
+        break;
+      }
       const jobIds = await this.getJobIds();
 
       for (const jobId of jobIds) {
@@ -204,6 +212,15 @@ export class JobCheckerApp {
     } while (await this.jobsSearchPage.nextPage());
 
     this.logger.setContext({ phase: `Search completed (${timePostedRangeLabel})`, jobId: undefined });
+  }
+
+  private async waitBeforeNextSearchAfterNoJobsFound(): Promise<void> {
+    this.logger.setContext({ phase: 'Waiting before next search', jobId: undefined });
+    this.logger.info('Waiting before next search...');
+    await sleep(randms(
+      JobCheckerApp.noJobsFoundHumanDelayFromSeconds,
+      JobCheckerApp.noJobsFoundHumanDelayToSeconds,
+    ));
   }
 
   private describeTimePostedRange(timePostedRange: TimePostedRange): string {

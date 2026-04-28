@@ -129,6 +129,9 @@ describe('JobCheckerApp', () => {
 
     (app as any).jobsSearchPage = jobsSearchPage;
     vi.spyOn(app as any, 'noJobsFound').mockResolvedValue(true);
+    const waitBeforeNextSearchAfterNoJobsFound = vi
+      .spyOn(app as any, 'waitBeforeNextSearchAfterNoJobsFound')
+      .mockResolvedValue(undefined);
 
     await (app as any).runJobSearches([
       {
@@ -179,6 +182,40 @@ describe('JobCheckerApp', () => {
       workType: WorkType.hybrid,
       timePostedRange: TimePostedRange.month,
     });
+    expect(waitBeforeNextSearchAfterNoJobsFound).toHaveBeenCalledTimes(6);
+  });
+
+  test('should wait before moving to the next search when no jobs are found', async () => {
+    const logger = createLogger();
+
+    const app = new JobCheckerApp(
+      logger,
+      createInteraction() as any,
+      { notify: vi.fn() } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    const jobsSearchPage = {
+      open: vi.fn().mockResolvedValue(undefined),
+      nextPage: vi.fn().mockResolvedValue(false),
+    };
+
+    (app as any).jobsSearchPage = jobsSearchPage;
+    vi.spyOn(app as any, 'noJobsFound').mockResolvedValue(true);
+    const waitBeforeNextSearchAfterNoJobsFound = vi
+      .spyOn(app as any, 'waitBeforeNextSearchAfterNoJobsFound')
+      .mockResolvedValue(undefined);
+
+    await (app as any).jobSearchByTimePostedRange({
+      query: 'angular',
+      location: '92000000',
+      filters: {},
+    }, TimePostedRange.day, executionOptions);
+
+    expect(waitBeforeNextSearchAfterNoJobsFound).toHaveBeenCalledTimes(1);
+    expect(jobsSearchPage.nextPage).not.toHaveBeenCalled();
   });
 
   test('should continue processing jobs after a single job failure', async () => {
