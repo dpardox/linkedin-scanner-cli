@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { Box, Text, useInput, type Key } from 'ink';
+import Link from 'ink-link';
 import { LoggerContext } from '@ports/logger.port';
 import {
   TerminalInputKey,
@@ -73,7 +74,7 @@ function ManualReviewView({ snapshot }: { snapshot: TerminalSessionSnapshot }): 
         <Text>Job: {manualReviewState.job.title || manualReviewState.job.id}</Text>
         <Text>Location: {manualReviewState.job.location || '-'}</Text>
         <Text>Criteria: {manualReviewState.job.criteria.join(', ')}</Text>
-        <Text>Link: {manualReviewState.job.link}</Text>
+        <OfferLink url={manualReviewState.job.link} />
       </Box>
       <Box marginTop={2}>
         <SessionSummary snapshot={snapshot} />
@@ -82,6 +83,15 @@ function ManualReviewView({ snapshot }: { snapshot: TerminalSessionSnapshot }): 
         <Text dimColor>Recent activity</Text>
         {renderActivityLines(snapshot.recentLogs)}
       </Box>
+    </Box>
+  );
+}
+
+function OfferLink({ url }: { url: string }): React.JSX.Element {
+  return (
+    <Box>
+      <Text>Link: </Text>
+      <Link url={url} fallback={(text) => text}>{url}</Link>
     </Box>
   );
 }

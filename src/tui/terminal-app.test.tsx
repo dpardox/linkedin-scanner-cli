@@ -121,6 +121,7 @@ describe('InkTerminalApp', () => {
     const frame = application.lastFrame() ?? '';
 
     expect(frame).toContain('Unknown job pending manual discard');
+    expect(frame).toContain('Link: https://www.linkedin.com/jobs/view/4386875881/');
     expect(frame).toContain('Session');
     expect(frame).not.toContain('Rule catalog');
     expect(frame).not.toContain('Shortlist');
