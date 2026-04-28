@@ -5,6 +5,7 @@ import React from 'react';
 import { afterEach, describe, expect, test } from 'vitest';
 import { render } from 'ink-testing-library';
 import { JobRuleFileRepository, PersistedJobRuleManager } from '@config/rules';
+import { ScannerPreferencesFileRepository } from '@config/scanner-preferences-file.repository';
 import { InkTerminalApp } from '@tui/terminal-app';
 import { TerminalSessionStore } from '@tui/terminal-session.store';
 
@@ -16,9 +17,18 @@ function createRuleManager(): PersistedJobRuleManager {
   temporaryDirectories.push(directory);
 
   return new PersistedJobRuleManager(new JobRuleFileRepository({
-    filePath: path.join(directory, 'catalog.jsonl'),
+    directoryPath: directory,
     seedRules: [],
   }));
+}
+
+function createPreferencesRepository(): ScannerPreferencesFileRepository {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'manual-review-preferences-'));
+  temporaryDirectories.push(directory);
+
+  return new ScannerPreferencesFileRepository({
+    directoryPath: directory,
+  });
 }
 
 afterEach(() => {
@@ -34,6 +44,7 @@ describe('InkTerminalApp', () => {
 
   test('should render the running view', async () => {
     const store = new TerminalSessionStore(true, {
+      preferencesRepository: createPreferencesRepository(),
       ruleManager: createRuleManager(),
     });
     store.setContext({
@@ -49,7 +60,7 @@ describe('InkTerminalApp', () => {
 
     expect(frame).toContain('LinkedIn scanner is running.');
     expect(frame).toContain('Session');
-    expect(frame).toContain('Rules: include 0 · exclude 0');
+    expect(frame).toContain('Rules: include 0 · exclude 0 · extra exclude 0');
     expect(frame).toContain('Found 0 · Unknown 0 · Discarded 0 · Skipped 0');
     expect(frame).not.toContain('Rule catalog');
     expect(frame).not.toContain('Shortlist');
@@ -61,6 +72,7 @@ describe('InkTerminalApp', () => {
 
   test('should save exclude rules from keyboard input', async () => {
     const store = new TerminalSessionStore(true, {
+      preferencesRepository: createPreferencesRepository(),
       ruleManager: createRuleManager(),
     });
     const application = render(<InkTerminalApp store={store} />);
@@ -72,17 +84,14 @@ describe('InkTerminalApp', () => {
 
     await Promise.resolve();
 
-    expect(store.getSnapshot().ruleCatalog.exclude).toEqual([
-      expect.objectContaining({
-        id: 'exclude-typescript',
-        name: 'typescript',
-      }),
-    ]);
-    expect(application.lastFrame()).toContain('Saved exclude rule "typescript".');
+    expect(store.getSnapshot().ruleCatalog.exclude).toEqual([]);
+    expect(store.getSnapshot().additionalKeywords.exclude).toEqual(['typescript']);
+    expect(application.lastFrame()).toContain('Saved exclude keyword "typescript".');
   });
 
   test('should render the manual review view and the session summary', async () => {
     const store = new TerminalSessionStore(true, {
+      preferencesRepository: createPreferencesRepository(),
       ruleManager: createRuleManager(),
     });
     store.trackUndeterminedEntry({
@@ -127,8 +136,8 @@ describe('InkTerminalApp', () => {
 
     const updatedFrame = application.lastFrame() ?? '';
 
-    expect(updatedFrame).toContain('Saved exclude rule "typescript".');
-    expect(updatedFrame).toContain('Rules: include 0 · exclude 1');
+    expect(updatedFrame).toContain('Saved exclude keyword "typescript".');
+    expect(updatedFrame).toContain('Rules: include 0 · exclude 0 · extra exclude 1');
     expect(updatedFrame).toContain('typescript');
 
     store.finishManualReview('4386875881');

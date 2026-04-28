@@ -1,9 +1,9 @@
 coverage/
 .auth/
-db/
+/db/*
 dist/
 logs/
 node_modules/
 config.scanner.ts
-rules/
+/rules/
 .scanner/

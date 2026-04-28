@@ -143,7 +143,7 @@ function buildSessionSummaryLines(snapshot: TerminalSessionSnapshot): string[] {
     `Search: ${snapshot.context.searchQuery ?? '-'}`,
     `Location: ${snapshot.context.location ?? '-'}`,
     `Current job: ${snapshot.context.jobId ?? '-'}`,
-    `Rules: include ${snapshot.ruleCatalog.include.length} · exclude ${snapshot.ruleCatalog.exclude.length}`,
+    `Rules: include ${snapshot.ruleCatalog.include.length} · exclude ${snapshot.ruleCatalog.exclude.length} · extra exclude ${snapshot.additionalKeywords.exclude.length}`,
     `Found ${snapshot.jobCounts.found} · Unknown ${snapshot.jobCounts.undetermined} · Discarded ${snapshot.jobCounts.discarded} · Skipped ${snapshot.jobCounts.skipped}`,
   ];
 }

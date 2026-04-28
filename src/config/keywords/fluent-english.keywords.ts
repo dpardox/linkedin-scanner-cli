@@ -1,1 +1,1 @@
-export { englishSkillKeywords as fluentEnglishKeywords } from '@skills/english.skill';
+export { englishKeywords as fluentEnglishKeywords } from './english.keywords';

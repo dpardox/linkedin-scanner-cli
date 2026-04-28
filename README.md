@@ -25,24 +25,24 @@ If LinkedIn closes the session, delete that file, run `npm start`, and log in ma
 
 ### Scanner setup
 
-Run `npm start`. On the first run, the terminal asks for the scanner preferences:
+Run `npm start`. The terminal starts with the scanner preferences:
 
 - search queries
 - countries or locations
 - languages
 - work type
 - Easy Apply
-- include and exclude rule IDs
+- include and exclude keywords
 - final content search query
 - whether unknown jobs should be shown
 
-The answers are saved in `.scanner/preferences.json` and reused automatically on later runs. When saved preferences exist, `npm start` asks whether you want to edit them before scanning.
+The answers are saved as semantic files in `db/` and reused automatically on later runs. Press Enter on any step to keep the saved value, or change it before continuing.
 
 In option lists, use arrows to move, Space to select or unselect, and Enter to continue.
 
-Include/exclude matching rules live in `rules/catalog.jsonl`. The setup menu selects rule IDs and can still reuse rules saved during manual review.
+Matching rules live in `keywords/`, with one JSON file per keyword package. The setup menu shows those keyword packages and can still reuse rules saved during manual review.
 
-If `rules/catalog.jsonl` does not exist yet, the scanner seeds it automatically from the current built-in rule packs.
+If the rule files do not exist yet, the scanner seeds them automatically from the current built-in rule packs.
 
 The scanner automatically runs each configured search in this order:
 
@@ -65,5 +65,5 @@ Run `npm start` to launch the scanner.
 - The use of method `waitForTimeout` is for preventing the browser overload and simulate human behavior.
 - for you reemplaza el recent activity temporalmente
 - Unknown jobs now go through the same manual review flow as any other shortlist hit. The scanner waits for you to dismiss them in LinkedIn before continuing.
-- The TUI shows a rule input during manual review. Use it to save future include/exclude rules into `rules/catalog.jsonl`.
-- The rule input supports plain text with `Enter`, or commands such as `/include term`, `/exclude term`, `/delete rule-id`, and `/clear`.
+- The TUI shows a rule input during manual review. Use it to save future exclude rules into `keywords/`.
+- The rule input supports plain text with `Enter`, `/exclude term`, and `exclude: term`.

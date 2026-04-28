@@ -1,3 +1,3 @@
-import { angularSkillKeywords, mergeKeywordGroups } from '@skills';
+import { angularKeywords, mergeKeywordGroups } from '@keywords';
 
-export const includeKeywords = mergeKeywordGroups(angularSkillKeywords);
+export const includeKeywords = mergeKeywordGroups(angularKeywords);

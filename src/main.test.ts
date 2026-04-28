@@ -27,7 +27,6 @@ const mocks = vi.hoisted(() => {
     run: vi.fn().mockResolvedValue(undefined),
     writePreferences: vi.fn(),
     createScannerConfig: vi.fn(() => scannerConfig),
-    hasPreferences: vi.fn(() => true),
     readPreferences: vi.fn(() => scannerPreferences),
     selectScannerPreferences: vi.fn().mockResolvedValue(scannerPreferences),
     selectExecutionOptions: vi.fn().mockResolvedValue({
@@ -56,7 +55,6 @@ vi.mock('@config/main.config', () => ({
 
 vi.mock('@config/scanner-preferences-file.repository', () => ({
   ScannerPreferencesFileRepository: vi.fn(() => ({
-    hasPreferences: mocks.hasPreferences,
     read: mocks.readPreferences,
     write: mocks.writePreferences,
   })),
@@ -69,7 +67,6 @@ describe('Main', () => {
     mocks.run.mockClear();
     mocks.writePreferences.mockClear();
     mocks.createScannerConfig.mockClear();
-    mocks.hasPreferences.mockClear();
     mocks.readPreferences.mockClear();
     mocks.selectScannerPreferences.mockClear();
     mocks.selectExecutionOptions.mockClear();
@@ -82,7 +79,7 @@ describe('Main', () => {
   test('should initialize the application with saved scanner preferences', async () => {
     await import('./main');
 
-    expect(mocks.selectScannerPreferences).toHaveBeenCalledWith(mocks.scannerPreferences, true);
+    expect(mocks.selectScannerPreferences).toHaveBeenCalledWith(mocks.scannerPreferences);
     expect(mocks.writePreferences).toHaveBeenCalledWith(mocks.scannerPreferences);
     expect(mocks.createScannerConfig).toHaveBeenCalledWith(mocks.scannerPreferences);
     expect(mocks.selectExecutionOptions).toHaveBeenCalledWith({ showUnknownJobs: true });

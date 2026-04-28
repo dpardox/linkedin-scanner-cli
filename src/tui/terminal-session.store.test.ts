@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { JobRuleFileRepository, PersistedJobRuleManager } from '@config/rules';
+import { ScannerPreferencesFileRepository } from '@config/scanner-preferences-file.repository';
 import { TerminalInputKey, TerminalSessionStore } from '@tui/terminal-session.store';
 
 const temporaryDirectories: string[] = [];
@@ -12,9 +13,18 @@ function createRuleManager(): PersistedJobRuleManager {
   temporaryDirectories.push(rulesDirectory);
 
   return new PersistedJobRuleManager(new JobRuleFileRepository({
-    filePath: path.join(rulesDirectory, 'catalog.jsonl'),
+    directoryPath: rulesDirectory,
     seedRules: [],
   }));
+}
+
+function createPreferencesRepository(): ScannerPreferencesFileRepository {
+  const preferencesDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'terminal-session-preferences-'));
+  temporaryDirectories.push(preferencesDirectory);
+
+  return new ScannerPreferencesFileRepository({
+    directoryPath: preferencesDirectory,
+  });
 }
 
 function createInputKey(overrides: Partial<TerminalInputKey> = {}): TerminalInputKey {
@@ -45,6 +55,7 @@ describe('TerminalSessionStore', () => {
 
   test('should save exclude rules from the footer input while the scanner is running', () => {
     const store = new TerminalSessionStore(true, {
+      preferencesRepository: createPreferencesRepository(),
       ruleManager: createRuleManager(),
     });
 
@@ -54,40 +65,27 @@ describe('TerminalSessionStore', () => {
     store.handleInput('e', createInputKey());
     store.handleInput('', createInputKey({ return: true }));
 
-    expect(store.getSnapshot().ruleCatalog.exclude).toEqual([
-      {
-        id: 'exclude-node',
-        name: 'node',
-        kind: 'term',
-        scope: 'exclude',
-        terms: ['node'],
-      },
-    ]);
+    expect(store.getSnapshot().additionalKeywords.exclude).toEqual(['node']);
+    expect(store.getSnapshot().ruleCatalog.exclude).toEqual([]);
     expect(store.getSnapshot().excludeDraft.value).toBe('');
     expect(store.getSnapshot().excludeDraft.cursorOffset).toBe(0);
   });
 
   test('should save exclude rules from prefixed footer input', () => {
     const store = new TerminalSessionStore(true, {
+      preferencesRepository: createPreferencesRepository(),
       ruleManager: createRuleManager(),
     });
 
     store.handleInput('exclude: node', createInputKey());
     store.handleInput('', createInputKey({ return: true }));
 
-    expect(store.getSnapshot().ruleCatalog.exclude).toEqual([
-      {
-        id: 'exclude-node',
-        name: 'node',
-        kind: 'term',
-        scope: 'exclude',
-        terms: ['node'],
-      },
-    ]);
+    expect(store.getSnapshot().additionalKeywords.exclude).toEqual(['node']);
   });
 
   test('should save exclude rules during manual review and dismiss unknown jobs when review finishes', () => {
     const store = new TerminalSessionStore(true, {
+      preferencesRepository: createPreferencesRepository(),
       ruleManager: createRuleManager(),
     });
 
@@ -122,15 +120,7 @@ describe('TerminalSessionStore', () => {
     store.handleInput('t', createInputKey());
     store.handleInput('', createInputKey({ return: true }));
 
-    expect(store.getSnapshot().ruleCatalog.exclude).toEqual([
-      {
-        id: 'exclude-typescript',
-        name: 'typescript',
-        kind: 'term',
-        scope: 'exclude',
-        terms: ['typescript'],
-      },
-    ]);
+    expect(store.getSnapshot().additionalKeywords.exclude).toEqual(['typescript']);
 
     store.finishManualReview('4386875881');
 
@@ -141,6 +131,7 @@ describe('TerminalSessionStore', () => {
 
   test('should track logs counters shortlist and saved rules', () => {
     const store = new TerminalSessionStore(false, {
+      preferencesRepository: createPreferencesRepository(),
       ruleManager: createRuleManager(),
     });
 

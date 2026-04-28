@@ -1,3 +1,4 @@
 export enum ScannerPreferencesPath {
-  file = '.scanner/preferences.json',
+  directory = 'db',
+  legacyFile = '.scanner/preferences.json',
 }

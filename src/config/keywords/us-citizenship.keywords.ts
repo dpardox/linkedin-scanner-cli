@@ -7,6 +7,5 @@ export const USCitizenshipKeywords = [
   'U.S.-based candidates only',
   'MUST BE A US CITIZEN',
   '(U.S.-based only)',
-  'EU Citizen only',
   '(US Only)',
 ].filter(Boolean);

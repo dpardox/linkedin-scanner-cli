@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { JobRuleFileRepository, PersistedJobRuleManager } from '@config/rules';
+import { PersistedJobRule } from '@config/rules/persisted-job-rule.type';
 import { ScannerPreferences } from '@shared/types/scanner-preferences.type';
 import { WinstonAdapter } from './winston.adapter';
 
@@ -13,8 +14,8 @@ const mockError = vi.fn();
 const mockRender = vi.hoisted(() => vi.fn(() => ({
   unmount: vi.fn(),
 })));
-const mockQuestion = vi.hoisted(() => vi.fn());
-const mockClose = vi.hoisted(() => vi.fn());
+const mockAskTerminalText = vi.hoisted(() => vi.fn(async (_title: string, defaultValue: string) => defaultValue));
+const mockSelectTerminalOptions = vi.hoisted(() => vi.fn(async ({ selectedValues }) => selectedValues));
 const temporaryDirectories: string[] = [];
 
 type WinstonAdapterProcessListeners = WinstonAdapter & {
@@ -22,13 +23,13 @@ type WinstonAdapterProcessListeners = WinstonAdapter & {
   restoreTerminal: () => void;
 };
 
-function createRuleManager(): PersistedJobRuleManager {
+function createRuleManager(seedRules: PersistedJobRule[] = []): PersistedJobRuleManager {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'winston-adapter-rules-'));
   temporaryDirectories.push(directory);
 
   return new PersistedJobRuleManager(new JobRuleFileRepository({
-    filePath: path.join(directory, 'catalog.jsonl'),
-    seedRules: [],
+    directoryPath: directory,
+    seedRules,
   }));
 }
 
@@ -95,11 +96,12 @@ vi.mock('winston', () => ({
   },
 }));
 
-vi.mock('node:readline/promises', () => ({
-  createInterface: vi.fn(() => ({
-    close: mockClose,
-    question: mockQuestion,
-  })),
+vi.mock('@tui/text-prompt', () => ({
+  askTerminalText: mockAskTerminalText,
+}));
+
+vi.mock('@tui/multi-select-prompt', () => ({
+  selectTerminalOptions: mockSelectTerminalOptions,
 }));
 
 describe('WinstonAdapter', () => {
@@ -107,7 +109,6 @@ describe('WinstonAdapter', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockQuestion.mockResolvedValue('');
     winstonAdapter = new WinstonAdapter({
       ruleManager: createRuleManager(),
     });
@@ -211,8 +212,6 @@ describe('WinstonAdapter', () => {
         showUnknownJobs: false,
       });
 
-      expect(mockQuestion).not.toHaveBeenCalled();
-      expect(mockClose).not.toHaveBeenCalled();
       expect(mockRender).toHaveBeenCalledOnce();
       expect(resume).toHaveBeenCalledOnce();
     } finally {
@@ -222,7 +221,7 @@ describe('WinstonAdapter', () => {
     }
   });
 
-  test('should keep saved scanner preferences when the user does not edit them', async () => {
+  test('should start scanner preferences with saved values', async () => {
     const restoreProcessTTY = setProcessTTY(true);
     const preferences: ScannerPreferences = {
       searchQueries: ['angular'],
@@ -240,15 +239,83 @@ describe('WinstonAdapter', () => {
       showUnknownJobs: false,
     };
     const interactiveWinstonAdapter = new WinstonAdapter({
-      ruleManager: createRuleManager(),
+      ruleManager: createRuleManager([
+        {
+          id: 'angular',
+          name: 'Angular',
+          kind: 'keyword',
+          terms: ['Angular'],
+        },
+        {
+          id: 'english',
+          name: 'English',
+          kind: 'keyword',
+          terms: ['English'],
+        },
+        {
+          id: 'dotnet',
+          name: '.NET',
+          kind: 'keyword',
+          terms: ['.NET'],
+        },
+        {
+          id: 'us-citizenship',
+          name: 'US citizenship',
+          kind: 'term',
+          terms: ['MUST BE A US CITIZEN'],
+        },
+      ]),
     });
-    mockQuestion.mockResolvedValueOnce('');
 
     try {
-      await expect(interactiveWinstonAdapter.selectScannerPreferences(preferences, true)).resolves.toEqual(preferences);
+      await expect(interactiveWinstonAdapter.selectScannerPreferences(preferences)).resolves.toEqual(preferences);
 
-      expect(mockQuestion).toHaveBeenCalledWith('\u001B[33m›\u001B[0m Edit saved scanner preferences? (y/N) ');
-      expect(mockClose).toHaveBeenCalledOnce();
+      expect(mockAskTerminalText).toHaveBeenCalledWith('Search queries', 'angular');
+      expect(mockAskTerminalText).toHaveBeenCalledWith('Final content search query', '"desarrollador angular"');
+      expect(mockSelectTerminalOptions).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Countries or locations',
+        selectedValues: ['colombia'],
+      }));
+      expect(mockSelectTerminalOptions).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Include keywords',
+        options: [
+          {
+            label: 'Angular',
+            value: 'angular',
+          },
+          {
+            label: '.NET',
+            value: 'dotnet',
+          },
+          {
+            label: 'English',
+            value: 'english',
+          },
+        ],
+        selectedValues: ['angular'],
+      }));
+      expect(mockSelectTerminalOptions).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Exclude keywords',
+        options: [
+          {
+            label: '.NET',
+            value: 'dotnet',
+          },
+          {
+            label: 'English',
+            value: 'english',
+          },
+          {
+            label: 'US citizenship',
+            value: 'us-citizenship',
+          },
+        ],
+        selectedValues: ['english'],
+      }));
+      expect(mockSelectTerminalOptions).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Show unknown jobs?',
+        selectedValues: ['n'],
+      }));
       expect(mockRender).not.toHaveBeenCalled();
     } finally {
       removeWinstonAdapterProcessListeners(interactiveWinstonAdapter);

@@ -1,4 +1,4 @@
-export const csharpSkillKeywords = [
+export const csharpKeywords = [
   'Write high-quality, maintainable code in both C#/.NET',
   'desarrollar y mantener aplicaciones utilizando C#',
   'seeking a Senior C#/.NET Software Engineer',

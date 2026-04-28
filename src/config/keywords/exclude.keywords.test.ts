@@ -22,11 +22,7 @@ describe('excludeKeywords', () => {
     expect(excludeKeywords).toContain('como en inglés (B2+)');
   });
 
-  test('should include fastapi django o flask as an exclusion keyword', () => {
-    expect(excludeKeywords).toContain('FastAPI, Django o Flask');
-  });
-
-  test('should include residencia en espana as an exclusion keyword', () => {
-    expect(excludeKeywords).toContain('Residencia en España');
+  test('should not include deleted strict additional exclusion keywords', () => {
+    expect(excludeKeywords).not.toContain('Residencia en España');
   });
 });

@@ -2,6 +2,7 @@ import { LanguageCode } from '@enums/language-code.enum';
 import { WorkType } from '@enums/work-type.enum';
 import { ScannerPreferences } from '@shared/types/scanner-preferences.type';
 import { restrictedLocationsKeywords } from './keywords/restricted-locations.keywords';
+import { additionalExcludeKeywordRuleIds } from './rules/default-persisted-job-rules';
 
 export const defaultScannerPreferences: ScannerPreferences = {
   searchQueries: ['"angular"', 'angular'],
@@ -29,7 +30,12 @@ export const defaultScannerPreferences: ScannerPreferences = {
     easyApply: true,
   },
   includeRuleIds: ['angular'],
-  excludeRuleIds: ['english', 'dotnet', 'strict-exclude-additional'],
+  excludeRuleIds: [
+    'english',
+    'dotnet',
+    ...additionalExcludeKeywordRuleIds,
+    'us-citizenship',
+  ],
   includeKeywords: [],
   excludeKeywords: [],
   contentSearchQuery: '"desarrollador angular"',

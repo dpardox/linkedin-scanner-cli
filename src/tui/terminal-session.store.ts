@@ -1,12 +1,15 @@
 import { PersistedJobRuleManager } from '@config/rules';
 import { JobRuleScope, PersistedJobRule } from '@config/rules/persisted-job-rule.type';
+import { ScannerPreferencesFileRepository } from '@config/scanner-preferences-file.repository';
 import { ForYouEntry, JobCounter, LoggerContext } from '@ports/logger.port';
 import { ManualReviewEntry } from '@shared/types/manual-review-entry.type';
+import { ScannerPreferences } from '@shared/types/scanner-preferences.type';
 import { UndeterminedQueueDecision, UndeterminedQueueEntry } from '@shared/types/undetermined-queue-entry.type';
 
 export type TerminalLogLevel = 'error' | 'success' | 'warn' | 'info';
 
 export type TerminalRuleCatalog = Record<JobRuleScope, PersistedJobRule[]>;
+export type TerminalAdditionalKeywords = Record<JobRuleScope, string[]>;
 
 export type TerminalLogEntry = {
   level: TerminalLogLevel;
@@ -40,6 +43,7 @@ export type ManualReviewState = {
 
 export type TerminalSessionSnapshot = {
   context: LoggerContext;
+  additionalKeywords: TerminalAdditionalKeywords;
   excludeDraft: TerminalRuleDraft;
   forYouEntries: ForYouEntry[];
   ruleCatalog: TerminalRuleCatalog;
@@ -53,6 +57,7 @@ export type TerminalSessionSnapshot = {
 type TerminalSessionListener = () => void;
 
 type TerminalSessionStoreOptions = {
+  preferencesRepository?: ScannerPreferencesFileRepository;
   ruleManager?: PersistedJobRuleManager;
   startedAt?: Date;
 };
@@ -60,6 +65,7 @@ type TerminalSessionStoreOptions = {
 export class TerminalSessionStore {
 
   private readonly listeners = new Set<TerminalSessionListener>();
+  private readonly preferencesRepository: ScannerPreferencesFileRepository;
   private readonly ruleManager: PersistedJobRuleManager;
   private snapshot: TerminalSessionSnapshot;
 
@@ -67,10 +73,13 @@ export class TerminalSessionStore {
     private readonly interactiveInput: boolean,
     options: TerminalSessionStoreOptions = {},
   ) {
+    this.preferencesRepository = options.preferencesRepository ?? new ScannerPreferencesFileRepository();
     this.ruleManager = options.ruleManager ?? new PersistedJobRuleManager();
+    const scannerPreferences = this.preferencesRepository.read();
     this.snapshot = this.createInitialSnapshot(
       options.startedAt ?? new Date(),
-      this.readRuleCatalog(),
+      this.createSelectedRuleCatalog(scannerPreferences),
+      this.createAdditionalKeywords(scannerPreferences),
     );
   }
 
@@ -92,6 +101,15 @@ export class TerminalSessionStore {
         ...this.snapshot.context,
         ...context,
       },
+    };
+    this.emit();
+  }
+
+  public setScannerPreferences(preferences: ScannerPreferences): void {
+    this.snapshot = {
+      ...this.snapshot,
+      additionalKeywords: this.createAdditionalKeywords(preferences),
+      ruleCatalog: this.createSelectedRuleCatalog(preferences),
     };
     this.emit();
   }
@@ -258,13 +276,7 @@ export class TerminalSessionStore {
       return;
     }
 
-    const persistedRule = this.ruleManager.upsertRule({
-      id: this.createRuleId(scope, cleanedValue),
-      name: cleanedValue,
-      kind: 'term',
-      scope,
-      terms: [cleanedValue],
-    });
+    const scannerPreferences = this.preferencesRepository.addAdditionalKeyword(scope, cleanedValue);
 
     this.snapshot = {
       ...this.snapshot,
@@ -272,10 +284,11 @@ export class TerminalSessionStore {
         value: '',
         cursorOffset: 0,
       },
-      ruleCatalog: this.readRuleCatalog(),
+      additionalKeywords: this.createAdditionalKeywords(scannerPreferences),
+      ruleCatalog: this.createSelectedRuleCatalog(scannerPreferences),
     };
     this.emit();
-    this.trackLog('success', `Saved ${scope} rule "${persistedRule.name}".`);
+    this.trackLog('success', `Saved ${scope} keyword "${cleanedValue}".`);
   }
 
   private clearDraft(): void {
@@ -386,9 +399,14 @@ export class TerminalSessionStore {
     };
   }
 
-  private createInitialSnapshot(startedAt: Date, ruleCatalog: TerminalRuleCatalog): TerminalSessionSnapshot {
+  private createInitialSnapshot(
+    startedAt: Date,
+    ruleCatalog: TerminalRuleCatalog,
+    additionalKeywords: TerminalAdditionalKeywords,
+  ): TerminalSessionSnapshot {
     return {
       context: {},
+      additionalKeywords,
       excludeDraft: this.createDraft(),
       forYouEntries: [],
       ruleCatalog,
@@ -411,29 +429,27 @@ export class TerminalSessionStore {
     };
   }
 
-  private readRuleCatalog(): TerminalRuleCatalog {
+  private createSelectedRuleCatalog(preferences: ScannerPreferences): TerminalRuleCatalog {
+    const rulesById = new Map(this.ruleManager.listRules().map((rule) => [rule.id, rule]));
+
     return {
-      include: this.sortRules(this.ruleManager.listRules('include')),
-      exclude: this.sortRules(this.ruleManager.listRules('exclude')),
+      include: this.findRulesById(preferences.includeRuleIds, rulesById),
+      exclude: this.findRulesById(preferences.excludeRuleIds, rulesById),
     };
   }
 
-  private sortRules(rules: PersistedJobRule[]): PersistedJobRule[] {
-    return [...rules].reverse();
+  private findRulesById(ruleIds: string[], rulesById: Map<string, PersistedJobRule>): PersistedJobRule[] {
+    return ruleIds.flatMap((ruleId) => {
+      const rule = rulesById.get(ruleId);
+      return rule ? [rule] : [];
+    });
   }
 
-  private createRuleId(scope: JobRuleScope, value: string): string {
-    return `${scope}-${this.slugify(value)}`;
-  }
-
-  private slugify(value: string): string {
-    return value
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      || 'rule';
+  private createAdditionalKeywords(preferences: ScannerPreferences): TerminalAdditionalKeywords {
+    return {
+      include: [...preferences.includeKeywords],
+      exclude: [...preferences.excludeKeywords],
+    };
   }
 
   private emit(): void {

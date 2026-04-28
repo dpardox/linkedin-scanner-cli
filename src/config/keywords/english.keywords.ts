@@ -1,4 +1,4 @@
-export const englishSkillKeywords = [
+export const englishKeywords = [
   'Excellent communication skills in both verbal and written English',
   'proficiency in English is essential to effectively communicate',
   'excellent written and verbal communication skills in English',

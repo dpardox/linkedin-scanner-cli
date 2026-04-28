@@ -10,11 +10,7 @@ const defaultExecutionOptions: ExecutionOptions = {
 void (async function bootstrap(): Promise<void> {
   const { jobChecker, interaction } = createJobCheckerRuntime();
   const scannerPreferencesRepository = new ScannerPreferencesFileRepository();
-  const hasSavedPreferences = scannerPreferencesRepository.hasPreferences();
-  const selectedScannerPreferences = await interaction.selectScannerPreferences(
-    scannerPreferencesRepository.read(),
-    hasSavedPreferences,
-  );
+  const selectedScannerPreferences = await interaction.selectScannerPreferences(scannerPreferencesRepository.read());
   scannerPreferencesRepository.write(selectedScannerPreferences);
 
   const scannerConfig = createScannerConfig(selectedScannerPreferences);

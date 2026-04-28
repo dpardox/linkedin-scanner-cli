@@ -1,4 +1,4 @@
-export const angularSkillKeywords = [
+export const angularKeywords = [
   'Angular',
   'AngularJS',
 ].filter(Boolean);

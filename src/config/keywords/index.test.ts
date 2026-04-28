@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { createKeywords, mergeKeywordGroups } from './index';
 
-describe('skills helpers', () => {
+describe('keywords helpers', () => {
   test('should merge keyword groups without duplicates', () => {
     expect(mergeKeywordGroups(['Angular', 'TypeScript'], ['Angular'], ['RxJS'])).toEqual([
       'Angular',
@@ -10,10 +10,10 @@ describe('skills helpers', () => {
     ]);
   });
 
-  test('should build include and exclude keywords from reusable skills', () => {
+  test('should build include and exclude keywords from reusable keywords', () => {
     expect(createKeywords({
-      includeSkills: [['Angular', 'AngularJS']],
-      excludeSkills: [['English C1'], ['PHP']],
+      includeKeywordGroups: [['Angular', 'AngularJS']],
+      excludeKeywordGroups: [['English C1'], ['PHP']],
       includeKeywords: ['TypeScript'],
       excludeKeywords: ['Java'],
     })).toEqual({

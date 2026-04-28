@@ -1,10 +1,10 @@
 import { format as formatMessage } from 'node:util';
-import { createInterface } from 'node:readline/promises';
 import React from 'react';
 import { render } from 'ink';
 import { createLogger, Logger, format, transports } from 'winston';
 import { addColors } from 'winston/lib/winston/config';
 import { PersistedJobRuleManager } from '@config/rules';
+import { PersistedJobRule } from '@config/rules/persisted-job-rule.type';
 import { LanguageCode } from '@enums/language-code.enum';
 import { Location } from '@enums/location.enum';
 import { WorkType } from '@enums/work-type.enum';
@@ -34,9 +34,6 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
 
   private static readonly showUnknownJobsAnswerYes = 'y';
   private static readonly showUnknownJobsAnswerNo = 'n';
-  private static readonly terminalColorReset = '\u001B[0m';
-  private static readonly terminalGreen = '\u001B[32m';
-  private static readonly terminalYellow = '\u001B[33m';
   private static readonly locationOptions = Object.keys(Location)
     .filter((locationKey) => Number.isNaN(Number(locationKey)))
     .map((locationKey) => ({
@@ -58,6 +55,7 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
   ];
 
   private readonly logger: Logger;
+  private readonly ruleManager: PersistedJobRuleManager;
   private readonly interactive = Boolean(process.stdout.isTTY);
   private readonly interactiveInput = Boolean(process.stdin.isTTY && process.stdout.isTTY);
   private readonly terminalSessionStore: TerminalSessionStore;
@@ -81,8 +79,9 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
   constructor (options: WinstonAdapterOptions = {}) {
     addColors(this.customLevels.colors);
 
+    this.ruleManager = options.ruleManager ?? new PersistedJobRuleManager();
     this.terminalSessionStore = new TerminalSessionStore(this.interactiveInput, {
-      ruleManager: options.ruleManager,
+      ruleManager: this.ruleManager,
     });
     this.logger = this.createWinstonLogger();
 
@@ -139,17 +138,15 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
 
   public async selectScannerPreferences(
     defaultPreferences: ScannerPreferences,
-    hasSavedPreferences: boolean,
   ): Promise<ScannerPreferences> {
     if (!this.interactiveInput) {
+      this.terminalSessionStore.setScannerPreferences(defaultPreferences);
       return defaultPreferences;
     }
 
-    if (hasSavedPreferences && !await this.askShouldEditSavedPreferences()) {
-      return defaultPreferences;
-    }
-
-    return await this.askScannerPreferences(defaultPreferences);
+    const scannerPreferences = await this.askScannerPreferences(defaultPreferences);
+    this.terminalSessionStore.setScannerPreferences(scannerPreferences);
+    return scannerPreferences;
   }
 
   public async selectExecutionOptions(defaultOptions: ExecutionOptions): Promise<ExecutionOptions> {
@@ -229,19 +226,14 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
     process.stdin.resume();
   }
 
-  private async askShouldEditSavedPreferences(): Promise<boolean> {
-    const answer = await this.askReadlineQuestion('Edit saved scanner preferences', 'Edit saved scanner preferences? (y/N) ');
-    return this.parseBooleanAnswer(answer, false);
-  }
-
   private async askScannerPreferences(defaultPreferences: ScannerPreferences): Promise<ScannerPreferences> {
     const searchQueries = await this.askTextList('Search queries', defaultPreferences.searchQueries);
     const locationKeys = await this.askLocationKeys(defaultPreferences.locationKeys);
     const languages = await this.askLanguages(defaultPreferences.languages);
     const workType = await this.askWorkType(defaultPreferences.filters.workType);
     const easyApply = await this.askBoolean('Easy Apply only?', defaultPreferences.filters.easyApply ?? true);
-    const includeRuleIds = await this.askTextList('Include rule IDs', defaultPreferences.includeRuleIds);
-    const excludeRuleIds = await this.askTextList('Exclude rule IDs', defaultPreferences.excludeRuleIds);
+    const includeRuleIds = await this.askIncludeKeywordRuleIds(defaultPreferences.includeRuleIds);
+    const excludeRuleIds = await this.askExcludeKeywordRuleIds(defaultPreferences.excludeRuleIds, includeRuleIds);
     const contentSearchQuery = await this.askText('Final content search query', defaultPreferences.contentSearchQuery);
     const showUnknownJobs = await this.askBoolean('Show unknown jobs?', defaultPreferences.showUnknownJobs);
 
@@ -317,6 +309,95 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
     return selectedValue[0] === WinstonAdapter.showUnknownJobsAnswerYes;
   }
 
+  private async askIncludeKeywordRuleIds(defaultRuleIds: string[]): Promise<string[]> {
+    return await this.askRuleIds('Include keywords', defaultRuleIds, [], this.listKeywordRules());
+  }
+
+  private async askExcludeKeywordRuleIds(
+    defaultRuleIds: string[],
+    includeRuleIds: string[],
+  ): Promise<string[]> {
+    const defaultExcludeRuleIds = defaultRuleIds.filter((ruleId) => !includeRuleIds.includes(ruleId));
+    return await this.askRuleIds('Exclude keywords', defaultExcludeRuleIds, includeRuleIds, this.listRules());
+  }
+
+  private async askRuleIds(
+    title: string,
+    defaultRuleIds: string[],
+    hiddenKeywordRuleIds: string[] = [],
+    rules: PersistedJobRule[],
+  ): Promise<string[]> {
+    const keywordOptions = this.createRuleOptions(rules, hiddenKeywordRuleIds);
+    if (!keywordOptions.length) return defaultRuleIds;
+
+    const selectedKeywordRuleIds = await selectTerminalOptions({
+      title,
+      options: keywordOptions,
+      selectedValues: this.getSelectedRuleIds(defaultRuleIds, hiddenKeywordRuleIds, rules),
+    });
+
+    return this.mergeVisibleAndHiddenRuleIds(defaultRuleIds, selectedKeywordRuleIds, keywordOptions);
+  }
+
+  private createRuleOptions(rules: PersistedJobRule[], hiddenKeywordRuleIds: string[]): Array<MenuOption<string>> {
+    const hiddenKeywordRuleIdSet = new Set(hiddenKeywordRuleIds);
+
+    return rules
+      .filter((rule) => !hiddenKeywordRuleIdSet.has(rule.id))
+      .map((rule) => ({
+        label: rule.name,
+        value: rule.id,
+      }));
+  }
+
+  private getSelectedRuleIds(
+    ruleIds: string[],
+    hiddenKeywordRuleIds: string[],
+    rules: PersistedJobRule[],
+  ): string[] {
+    const hiddenKeywordRuleIdSet = new Set(hiddenKeywordRuleIds);
+    const availableRuleIds = new Set(rules.map((rule) => rule.id));
+
+    return ruleIds.filter((ruleId) => availableRuleIds.has(ruleId) && !hiddenKeywordRuleIdSet.has(ruleId));
+  }
+
+  private listRules(): PersistedJobRule[] {
+    return this.dedupeRules(this.ruleManager.listRules());
+  }
+
+  private listKeywordRules(): PersistedJobRule[] {
+    return this.dedupeRules(this.ruleManager.listRules().filter((rule) => rule.kind === 'keyword'));
+  }
+
+  private dedupeRules(rules: PersistedJobRule[]): PersistedJobRule[] {
+    const rulesById = new Map<string, PersistedJobRule>();
+
+    rules.forEach((rule) => {
+      if (rulesById.has(rule.id)) return;
+
+      rulesById.set(rule.id, rule);
+    });
+
+    return Array.from(rulesById.values());
+  }
+
+  private mergeVisibleAndHiddenRuleIds(
+    defaultRuleIds: string[],
+    selectedVisibleRuleIds: string[],
+    visibleOptions: Array<MenuOption<string>>,
+  ): string[] {
+    const visibleRuleIds = new Set(visibleOptions.map((option) => option.value));
+    const selectedVisibleRuleIdSet = new Set(selectedVisibleRuleIds);
+    const selectedDefaultRuleIds = defaultRuleIds.filter((ruleId) => {
+      if (!visibleRuleIds.has(ruleId)) return true;
+
+      return selectedVisibleRuleIdSet.has(ruleId);
+    });
+    const newSelectedVisibleRuleIds = selectedVisibleRuleIds.filter((ruleId) => !defaultRuleIds.includes(ruleId));
+
+    return [...selectedDefaultRuleIds, ...newSelectedVisibleRuleIds];
+  }
+
   private async askText(
     label: string,
     defaultValue: string,
@@ -328,47 +409,11 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
     return value;
   }
 
-  private async askReadlineQuestion(label: string, question: string): Promise<string> {
-    process.stdin.setRawMode?.(false);
-    process.stdin.resume();
-
-    const readline = createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-
-    try {
-      const answer = await readline.question(`${WinstonAdapter.terminalYellow}›${WinstonAdapter.terminalColorReset} ${question}`);
-      this.replaceLastTerminalLine(`${WinstonAdapter.terminalGreen}✔${WinstonAdapter.terminalColorReset} ${label}`);
-      return answer;
-    } finally {
-      readline.close();
-    }
-  }
-
-  private replaceLastTerminalLine(value: string): void {
-    process.stdout.write(`\u001B[1A\u001B[2K${value}\n`);
-  }
-
   private parseTextList(answer: string): string[] {
     return answer
       .split(',')
       .map((value) => value.trim())
       .filter(Boolean);
-  }
-
-  private parseBooleanAnswer(answer: string, defaultValue: boolean): boolean {
-    const normalizedAnswer = answer.trim().toLowerCase();
-
-    if (normalizedAnswer === WinstonAdapter.showUnknownJobsAnswerYes) {
-      return true;
-    }
-
-    if (normalizedAnswer === WinstonAdapter.showUnknownJobsAnswerNo) {
-      return false;
-    }
-
-    return defaultValue;
   }
 
   private static humanizeLocationKey(locationKey: string): string {
