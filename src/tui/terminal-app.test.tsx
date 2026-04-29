@@ -11,6 +11,7 @@ import { TerminalSessionStore } from '@tui/terminal-session.store';
 
 const mountedApplications: Array<{ unmount: () => void }> = [];
 const temporaryDirectories: string[] = [];
+const chartBarCharacter = String.fromCharCode(0x2588);
 
 function createRuleManager(): PersistedJobRuleManager {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'manual-review-ui-'));
@@ -61,7 +62,13 @@ describe('InkTerminalApp', () => {
     expect(frame).toContain('LinkedIn scanner is running.');
     expect(frame).toContain('Session');
     expect(frame).toContain('include 0 | exclude 0 | extra exclude 0');
-    expect(frame).toContain('found 0 | unknown 0 | discarded 0 | skipped 0');
+    expect(frame).toContain('Jobs');
+    expect(frame).toContain('No jobs yet');
+    expect(frame).toContain('Found     0');
+    expect(frame).toContain('Unknown   0');
+    expect(frame).toContain('Discarded 0');
+    expect(frame).toContain('Skipped   0');
+    expect(frame).not.toContain('found 0 | unknown 0 | discarded 0 | skipped 0');
     expect(frame).not.toContain('Rule catalog');
     expect(frame).not.toContain('Shortlist');
     expect(frame).not.toContain('Review queue');
@@ -112,6 +119,10 @@ describe('InkTerminalApp', () => {
       classification: 'unknown',
       defaultRuleScope: 'exclude',
     });
+    store.countJob('undetermined');
+    for (let i = 0; i < 100; i += 1) {
+      store.countJob('skipped');
+    }
     const application = render(<InkTerminalApp store={store} />);
 
     mountedApplications.push(application);
@@ -123,6 +134,10 @@ describe('InkTerminalApp', () => {
     expect(frame).toContain('Unknown job pending manual discard');
     expect(frame).toContain('Link: https://www.linkedin.com/jobs/view/4386875881/');
     expect(frame).toContain('Session');
+    expect(frame).toContain('Jobs');
+    expect(frame).toContain(chartBarCharacter);
+    expect(frame).toContain('Unknown   1');
+    expect(frame).toContain('Skipped   100');
     expect(frame).not.toContain('Rule catalog');
     expect(frame).not.toContain('Shortlist');
     expect(frame).not.toContain('Review queue');

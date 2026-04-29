@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Box, Text, useInput, type Key } from 'ink';
+import { StackedBarChart, type StackedBarSegment } from '@pppp606/ink-chart';
 import Link from 'ink-link';
 import { Spawn } from 'ink-spawn';
-import { LoggerContext } from '@ports/logger.port';
+import { JobCounter, LoggerContext } from '@ports/logger.port';
 import {
   TerminalInputKey,
   TerminalLogEntry,
@@ -21,8 +22,24 @@ type SessionSummaryRow = {
   value: string;
 };
 
+type JobStatsChartRow = {
+  counter: JobCounter;
+  label: string;
+  color: string;
+};
+
 const actionStatusPollIntervalMs = 50;
 const actionStatusTimeoutMs = 30000;
+const jobStatsChartWidth = 32;
+const jobStatsLegendLabelWidth = 10;
+const sessionDashboardChartGap = 4;
+
+const jobStatsChartRows: JobStatsChartRow[] = [
+  { counter: 'found', label: 'Found', color: 'green' },
+  { counter: 'undetermined', label: 'Unknown', color: 'yellow' },
+  { counter: 'discarded', label: 'Discarded', color: 'red' },
+  { counter: 'skipped', label: 'Skipped', color: 'cyan' },
+];
 
 export function InkTerminalApp({ store }: InkTerminalAppProps): React.JSX.Element {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
@@ -87,7 +104,7 @@ function ManualReviewView({ snapshot }: { snapshot: TerminalSessionSnapshot }): 
         <OfferLink url={manualReviewState.job.link} />
       </Box>
       <Box marginTop={2}>
-        <SessionSummary snapshot={snapshot} />
+        <SessionDashboard snapshot={snapshot} />
       </Box>
       <TerminalActionList actions={snapshot.spawnActions} />
       <Box marginTop={2} flexDirection="column">
@@ -112,12 +129,25 @@ function RunningView({ snapshot }: { snapshot: TerminalSessionSnapshot }): React
     <Box flexDirection="column">
       <Text bold color="cyan">LinkedIn scanner is running.</Text>
       <Box marginTop={2}>
-        <SessionSummary snapshot={snapshot} />
+        <SessionDashboard snapshot={snapshot} />
       </Box>
       <TerminalActionList actions={snapshot.spawnActions} />
       <Box marginTop={2} flexDirection="column">
         <Text dimColor>Recent activity</Text>
         {renderActivityLines(snapshot.recentLogs)}
+      </Box>
+    </Box>
+  );
+}
+
+function SessionDashboard({ snapshot }: { snapshot: TerminalSessionSnapshot }): React.JSX.Element {
+  return (
+    <Box width="100%">
+      <Box flexGrow={1} flexShrink={1}>
+        <SessionSummary snapshot={snapshot} />
+      </Box>
+      <Box marginLeft={sessionDashboardChartGap} flexShrink={0}>
+        <JobStatsChart snapshot={snapshot} />
       </Box>
     </Box>
   );
@@ -143,6 +173,77 @@ function SessionSummaryItem({ row }: { row: SessionSummaryRow }): React.JSX.Elem
         <Text dimColor>{row.label}</Text>
       </Box>
       <Text>{row.value}</Text>
+    </Box>
+  );
+}
+
+function JobStatsChart({ snapshot }: { snapshot: TerminalSessionSnapshot }): React.JSX.Element {
+  const data = createJobStatsChartData(snapshot);
+  const total = calculateJobStatsTotal(snapshot);
+  const max = calculateJobStatsChartMax(total, data.length);
+
+  return (
+    <Box flexDirection="column">
+      <Text bold>Jobs</Text>
+      <Box marginTop={1} flexDirection="column">
+        {data.length ? (
+          <StackedBarChart
+            data={data}
+            mode="absolute"
+            max={max}
+            width={jobStatsChartWidth}
+            showLabels={false}
+            showValues={false}
+          />
+        ) : (
+          <Text dimColor>No jobs yet</Text>
+        )}
+        <JobStatsLegend snapshot={snapshot} />
+      </Box>
+    </Box>
+  );
+}
+
+function createJobStatsChartData(snapshot: TerminalSessionSnapshot): StackedBarSegment[] {
+  return jobStatsChartRows
+    .map((row) => ({
+      label: row.label,
+      value: snapshot.jobCounts[row.counter],
+      color: row.color,
+    }))
+    .filter((segment) => segment.value > 0);
+}
+
+function calculateJobStatsTotal(snapshot: TerminalSessionSnapshot): number {
+  return jobStatsChartRows.reduce((total, row) => total + snapshot.jobCounts[row.counter], 0);
+}
+
+function calculateJobStatsChartMax(total: number, positiveSegmentCount: number): number {
+  if (positiveSegmentCount === 0) {
+    return 1;
+  }
+
+  const availableProportionalWidth = jobStatsChartWidth - positiveSegmentCount;
+  return Math.ceil((total * jobStatsChartWidth) / availableProportionalWidth);
+}
+
+function JobStatsLegend({ snapshot }: { snapshot: TerminalSessionSnapshot }): React.JSX.Element {
+  return (
+    <Box marginTop={1} flexDirection="column">
+      {jobStatsChartRows.map((row) => (
+        <JobStatsLegendItem key={row.counter} count={snapshot.jobCounts[row.counter]} row={row} />
+      ))}
+    </Box>
+  );
+}
+
+function JobStatsLegendItem({ count, row }: { count: number; row: JobStatsChartRow }): React.JSX.Element {
+  return (
+    <Box>
+      <Box width={jobStatsLegendLabelWidth}>
+        <Text color={row.color}>{row.label}</Text>
+      </Box>
+      <Text>{count}</Text>
     </Box>
   );
 }
@@ -250,7 +351,6 @@ function buildSessionSummaryRows(snapshot: TerminalSessionSnapshot): SessionSumm
     { label: 'Location', value: String(snapshot.context.location ?? '-') },
     { label: 'Current job', value: snapshot.context.jobId ?? '-' },
     { label: 'Rules', value: `include ${snapshot.ruleCatalog.include.length} | exclude ${snapshot.ruleCatalog.exclude.length} | extra exclude ${snapshot.additionalKeywords.exclude.length}` },
-    { label: 'Jobs', value: `found ${snapshot.jobCounts.found} | unknown ${snapshot.jobCounts.undetermined} | discarded ${snapshot.jobCounts.discarded} | skipped ${snapshot.jobCounts.skipped}` },
   ];
 }
 
