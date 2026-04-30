@@ -50,6 +50,7 @@ describe('InkTerminalApp', () => {
     store.setContext({
       phase: 'Starting run',
     });
+    store.trackLog('info', 'Checking if job "4386875881" is a good fit...');
     const application = render(<InkTerminalApp store={store} />);
 
     mountedApplications.push(application);
@@ -72,7 +73,9 @@ describe('InkTerminalApp', () => {
     expect(frame).not.toContain('Review queue');
     expect(frame).toContain('Exclude jobs containing:');
     expect(frame).toContain('keyword or phrase');
-    expect(frame.indexOf('Session')).toBeLessThan(frame.indexOf('Recent activity'));
+    expect(frame).toContain('Checking if job "4386875881" is a good fit...');
+    expect(frame).not.toContain('[info]');
+    expect(frame.indexOf('Session')).toBeLessThan(frame.indexOf('Activity'));
   });
 
   test('should save exclude rules from keyboard input', async () => {
@@ -149,7 +152,7 @@ describe('InkTerminalApp', () => {
     expect(frame).not.toContain('Review queue');
     expect(frame).toContain('Exclude jobs containing:');
     expect(frame).toContain('keyword or phrase');
-    expect(frame.indexOf('Session')).toBeLessThan(frame.indexOf('Recent activity'));
+    expect(frame.indexOf('Session')).toBeLessThan(frame.indexOf('Activity'));
 
     store.handleInput('typescript', {});
     store.handleInput('', { return: true });

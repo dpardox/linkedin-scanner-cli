@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Box, Text, useInput, type Key } from 'ink';
-import { TextInput } from '@inkjs/ui';
+import { Spinner, TextInput } from '@inkjs/ui';
 import Link from 'ink-link';
 import { Spawn } from 'ink-spawn';
 import { JobCounter, LoggerContext } from '@ports/logger.port';
@@ -108,8 +108,8 @@ function ManualReviewView({ snapshot }: { snapshot: TerminalSessionSnapshot }): 
       </Box>
       <TerminalActionList actions={snapshot.spawnActions} />
       <Box marginTop={2} flexDirection="column">
-        <Text dimColor>Recent activity</Text>
-        {renderActivityLines(snapshot.recentLogs)}
+        <Text dimColor>Activity</Text>
+        <ActivityStatus snapshot={snapshot} />
       </Box>
     </Box>
   );
@@ -133,8 +133,8 @@ function RunningView({ snapshot }: { snapshot: TerminalSessionSnapshot }): React
       </Box>
       <TerminalActionList actions={snapshot.spawnActions} />
       <Box marginTop={2} flexDirection="column">
-        <Text dimColor>Recent activity</Text>
-        {renderActivityLines(snapshot.recentLogs)}
+        <Text dimColor>Activity</Text>
+        <ActivityStatus snapshot={snapshot} />
       </Box>
     </Box>
   );
@@ -307,18 +307,31 @@ function TerminalFooter({ snapshot, store }: { snapshot: TerminalSessionSnapshot
   );
 }
 
-function renderActivityLines(recentLogs: TerminalLogEntry[]): React.JSX.Element[] {
-  if (!recentLogs.length) {
-    return [<Text key="empty-activity" dimColor>Waiting for events...</Text>];
+function ActivityStatus({ snapshot }: { snapshot: TerminalSessionSnapshot }): React.JSX.Element {
+  const latestLog = getLatestLog(snapshot.recentLogs);
+
+  if (!latestLog) {
+    return <Spinner label={snapshot.context.phase ?? 'Waiting for events...'} />;
   }
 
-  return recentLogs.slice().reverse().map((log) => (
-    <Text key={`${log.timestamp}-${log.message}`}>
-      <Text dimColor>{log.timestamp} </Text>
-      <Text color={getActivityColor(log.level)}>{getActivityBadge(log.level)} </Text>
+  if (latestLog.level === 'info') {
+    return <Spinner label={latestLog.message} />;
+  }
+
+  return <ActivityResult log={latestLog} />;
+}
+
+function getLatestLog(recentLogs: TerminalLogEntry[]): TerminalLogEntry | undefined {
+  return recentLogs[recentLogs.length - 1];
+}
+
+function ActivityResult({ log }: { log: TerminalLogEntry }): React.JSX.Element {
+  return (
+    <Text>
+      <Text color={getActivityColor(log.level)}>{getActivityLabel(log.level)} </Text>
       <Text>{log.message}</Text>
     </Text>
-  ));
+  );
 }
 
 function buildSessionSummaryRows(snapshot: TerminalSessionSnapshot): SessionSummaryRow[] {
@@ -335,20 +348,20 @@ function buildHeaderModeLabel(context: LoggerContext): string {
   return context.runMode === 'manual-review' ? 'manual review' : 'scan';
 }
 
-function getActivityBadge(level: TerminalLogEntry['level']): string {
+function getActivityLabel(level: TerminalLogEntry['level']): string {
   if (level === 'success') {
-    return '[ok]';
+    return 'Done';
   }
 
   if (level === 'warn') {
-    return '[warn]';
+    return 'Warning';
   }
 
   if (level === 'error') {
-    return '[error]';
+    return 'Error';
   }
 
-  return '[info]';
+  return 'Working';
 }
 
 function getActivityColor(level: TerminalLogEntry['level']): 'blue' | 'green' | 'red' | 'yellow' {
