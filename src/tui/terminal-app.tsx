@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { Box, Text, useInput, type Key } from 'ink';
-import { Spinner, TextInput } from '@inkjs/ui';
+import { Box, Text, useInput, type Key, type TextProps } from 'ink';
+import { Badge, Spinner, TextInput } from '@inkjs/ui';
 import Link from 'ink-link';
 import { Spawn } from 'ink-spawn';
+import { Location } from '@enums/location.enum';
+import { TimePostedRange } from '@enums/time-posted-range.enum';
+import { WorkType } from '@enums/work-type.enum';
 import { JobCounter, LoggerContext } from '@ports/logger.port';
 import {
   TerminalLogEntry,
@@ -28,6 +31,11 @@ type JobStatsCounterRow = {
 
 type JobStatsCounterEntry = JobStatsCounterRow & {
   value: number;
+};
+
+type HeaderBadgeProps = {
+  color: TextProps['color'];
+  label: string;
 };
 
 const actionStatusPollIntervalMs = 50;
@@ -62,17 +70,122 @@ export function InkTerminalApp({ store }: InkTerminalAppProps): React.JSX.Elemen
 
 function TerminalHeader({ context, elapsedTimeLabel }: { context: LoggerContext; elapsedTimeLabel: string }): React.JSX.Element {
   return (
-    <Box flexDirection="column">
-      <Box justifyContent="space-between" paddingX={1}>
-        <Text inverse bold> LinkedIn Scanner CLI </Text>
-        <Text inverse>{buildHeaderModeLabel(context)}</Text>
+    <Box flexDirection="column" paddingX={2}>
+      <Text bold color="cyan">LinkedIn Scanner CLI</Text>
+      <Box marginTop={1}>
+        <HeaderBadge color="blue" label={buildScannerSummaryBadgeLabel(context)} />
+        <Box marginLeft={1}>
+          <HeaderBadge color="green" label={`Elapsed ${elapsedTimeLabel}`} />
+        </Box>
       </Box>
-      <Box justifyContent="space-between" paddingX={1}>
+      <Box marginTop={1}>
         <Text dimColor>{context.phase ?? 'Idle'}</Text>
-        <Text dimColor>{elapsedTimeLabel}</Text>
       </Box>
     </Box>
   );
+}
+
+function HeaderBadge({ color, label }: HeaderBadgeProps): React.JSX.Element {
+  return (
+    <Badge color={color}>
+      <>{label}</>
+    </Badge>
+  );
+}
+
+function buildScannerSummaryBadgeLabel(context: LoggerContext): string {
+  const scannerSummaryParts = [
+    formatSearchQueryLabel(context.searchQuery),
+    formatLocationSearchLabel(context.location),
+    ...buildScannerFilterLabels(context),
+  ].filter((part): part is string => Boolean(part));
+
+  return scannerSummaryParts.join(' ');
+}
+
+function formatSearchQueryLabel(searchQuery: string | undefined): string {
+  if (!searchQuery) return 'No active search';
+
+  return toTitleCase(removeSurroundingQuotes(searchQuery.trim()));
+}
+
+function removeSurroundingQuotes(value: string): string {
+  if (value.length < 2) return value;
+  if (!value.startsWith('"')) return value;
+  if (!value.endsWith('"')) return value;
+
+  return value.slice(1, -1);
+}
+
+function formatLocationSearchLabel(location: LoggerContext['location']): string | undefined {
+  const locationLabel = formatLocationLabel(location);
+
+  if (!locationLabel) return undefined;
+
+  return `in ${locationLabel}`;
+}
+
+function formatLocationLabel(location: LoggerContext['location']): string | undefined {
+  if (location === undefined) return undefined;
+
+  const locationKey = resolveLocationKey(location);
+
+  if (!locationKey) return String(location);
+
+  return toTitleCase(splitCamelCase(locationKey));
+}
+
+function resolveLocationKey(location: LoggerContext['location']): string | undefined {
+  if (typeof location === 'number') return Location[location];
+
+  const numericLocation = Number(location);
+
+  if (Number.isFinite(numericLocation)) return Location[numericLocation];
+
+  return location;
+}
+
+function splitCamelCase(value: string): string {
+  return Array.from(value).reduce((formattedValue, character, index) => {
+    if (index > 0 && character === character.toUpperCase() && character !== character.toLowerCase()) {
+      return `${formattedValue} ${character}`;
+    }
+
+    return `${formattedValue}${character}`;
+  }, '');
+}
+
+function buildScannerFilterLabels(context: LoggerContext): string[] {
+  return [
+    formatTimePostedRangeLabel(context.timePostedRange),
+    formatWorkTypeLabel(context.workType),
+    context.easyApply ? 'Easy Apply' : undefined,
+  ].filter((part): part is string => Boolean(part));
+}
+
+function formatTimePostedRangeLabel(timePostedRange: TimePostedRange | undefined): string | undefined {
+  if (timePostedRange === TimePostedRange.day) return 'last 24 hours';
+  if (timePostedRange === TimePostedRange.week) return 'last 7 days';
+  if (timePostedRange === TimePostedRange.month) return 'last 30 days';
+  if (timePostedRange === TimePostedRange.any) return 'any time';
+
+  return undefined;
+}
+
+function formatWorkTypeLabel(workType: WorkType | undefined): string | undefined {
+  if (workType === WorkType.remote) return 'remotely';
+  if (workType === WorkType.hybrid) return 'hybrid';
+  if (workType === WorkType.onSite) return 'on site';
+
+  return undefined;
+}
+
+function toTitleCase(value: string): string {
+  return value
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`)
+    .join(' ');
 }
 
 function PrimaryContent({ snapshot }: { snapshot: TerminalSessionSnapshot }): React.JSX.Element {
@@ -342,10 +455,6 @@ function buildSessionSummaryRows(snapshot: TerminalSessionSnapshot): SessionSumm
     { label: 'Current job', value: snapshot.context.jobId ?? '-' },
     { label: 'Rules', value: `include rules ${snapshot.ruleCatalog.include.length} | exclusion rules ${snapshot.ruleCatalog.exclude.length} | custom exclusions ${snapshot.additionalKeywords.exclude.length}` },
   ];
-}
-
-function buildHeaderModeLabel(context: LoggerContext): string {
-  return context.runMode === 'manual-review' ? 'manual review' : 'scan';
 }
 
 function getActivityLabel(level: TerminalLogEntry['level']): string {

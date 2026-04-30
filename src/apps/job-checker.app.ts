@@ -122,6 +122,9 @@ export class JobCheckerApp {
       runMode: 'default',
       searchQuery: scannerConfig.contentSearchQuery,
       location: undefined,
+      timePostedRange: undefined,
+      workType: undefined,
+      easyApply: undefined,
       jobId: undefined,
     });
     this.notifier.notify();
@@ -170,6 +173,9 @@ export class JobCheckerApp {
       phase: `Opening jobs search (${timePostedRangeLabel})`,
       searchQuery: query,
       location,
+      timePostedRange,
+      workType: filters.workType,
+      easyApply: filters.easyApply,
       jobId: undefined,
     });
     this.logger.info('Running jobs search for %s...', timePostedRangeLabel);

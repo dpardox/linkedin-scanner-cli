@@ -6,6 +6,9 @@ import { afterEach, describe, expect, test } from 'vitest';
 import { render } from 'ink-testing-library';
 import { JobRuleFileRepository, PersistedJobRuleManager } from '@config/rules';
 import { ScannerPreferencesFileRepository } from '@config/scanner-preferences-file.repository';
+import { Location } from '@enums/location.enum';
+import { TimePostedRange } from '@enums/time-posted-range.enum';
+import { WorkType } from '@enums/work-type.enum';
 import { InkTerminalApp } from '@tui/terminal-app';
 import { TerminalSessionStore } from '@tui/terminal-session.store';
 
@@ -49,6 +52,10 @@ describe('InkTerminalApp', () => {
     });
     store.setContext({
       phase: 'Starting run',
+      searchQuery: '"angular"',
+      location: Location.spain,
+      timePostedRange: TimePostedRange.day,
+      workType: WorkType.remote,
     });
     store.trackLog('info', 'Checking if job "4386875881" is a good fit...');
     const application = render(<InkTerminalApp store={store} />);
@@ -61,6 +68,8 @@ describe('InkTerminalApp', () => {
 
     expect(frame).toContain('LinkedIn scanner is running.');
     expect(frame).toContain('LinkedIn Scanner CLI');
+    expect(frame).toContain('Angular in Spain last 24 hours remotely');
+    expect(frame).toMatch(/Elapsed \d{2}:\d{2}/);
     expect(frame).toContain('Session');
     expect(frame).toMatch(/include rules 0 \| exclusion rules 0\s+\|?\s*custom exclusions 0/);
     expect(frame).toContain('Jobs');

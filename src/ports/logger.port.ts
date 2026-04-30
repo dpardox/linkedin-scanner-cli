@@ -1,10 +1,15 @@
 import { UndeterminedQueueEntry } from '@shared/types/undetermined-queue-entry.type';
+import { TimePostedRange } from '@enums/time-posted-range.enum';
+import { WorkType } from '@enums/work-type.enum';
 
 export type LoggerContext = {
   runMode?: string;
   phase?: string;
   searchQuery?: string;
   location?: string | number;
+  timePostedRange?: TimePostedRange;
+  workType?: WorkType;
+  easyApply?: boolean;
   jobId?: string;
 };
 
