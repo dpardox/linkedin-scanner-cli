@@ -4,6 +4,7 @@ import { Filters } from '@shared/types/filters.type';
 import { JobSearchConfig } from '@shared/types/job-search-config.type';
 import { ScannerConfig } from '@shared/types/scanner-config.type';
 import { ScannerPreferences } from '@shared/types/scanner-preferences.type';
+import { createJobSearchQueries } from '@utils/job-search-query.util';
 
 export const defaultJobSearchFilters: Filters = {};
 
@@ -22,7 +23,7 @@ function createJobSearchConfigs(
   preferences: ScannerPreferences,
   ruleManager: PersistedJobRuleManager,
 ): JobSearchConfig[] {
-  return preferences.searchQueries.map((query) => ({
+  return createJobSearchQueries(preferences.searchQueries, preferences.strictSearchMode).map((query) => ({
     query,
     locations: preferences.locationKeys.map((locationKey) => Location[locationKey]),
     restrictedLocations: [...preferences.restrictedLocations],

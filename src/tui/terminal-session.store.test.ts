@@ -205,5 +205,10 @@ describe('TerminalSessionStore', () => {
     expect(snapshot.jobCounts.notApplicable).toBe(0);
     expect(snapshot.jobCounts.forMe).toBe(1);
     expect(snapshot.jobCounts.unknown).toBe(0);
+    expect(snapshot.jobEntries[0]).toMatchObject({
+      id: '4386875881',
+      status: 'success',
+      decision: 'goodFit',
+    });
   });
 });

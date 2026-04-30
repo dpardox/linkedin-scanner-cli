@@ -253,6 +253,7 @@ describe('WinstonAdapter', () => {
     const restoreProcessTTY = setProcessTTY(true);
     const preferences: ScannerPreferences = {
       searchQueries: ['angular'],
+      strictSearchMode: false,
       locationKeys: ['colombia'],
       languages: ['spa'],
       restrictedLocations: [],
@@ -308,6 +309,12 @@ describe('WinstonAdapter', () => {
         '"desarrollador angular"',
         'This posts search opens after the job scan. Press Enter to keep the current value.',
       );
+      expect(mockSelectTerminalOptions).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Should strict search mode be enabled?',
+        detail: 'Select Yes to scan with double quotes first, or No to scan without the strict pass. Press Enter to keep the current selection.',
+        selectedValues: ['n'],
+        multiple: false,
+      }));
       expect(mockSelectTerminalOptions).toHaveBeenCalledWith(expect.objectContaining({
         title: 'Where should LinkedIn search jobs?',
         detail: 'Select one or more countries or locations. Press Enter to keep the current selection.',

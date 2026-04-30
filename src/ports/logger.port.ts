@@ -11,9 +11,17 @@ export type LoggerContext = {
   workType?: WorkType;
   easyApply?: boolean;
   jobId?: string;
+  jobTitle?: string;
 };
 
 export type JobCounter = 'forMe' | 'notApplicable' | 'unknown';
+
+export type CountedJob = {
+  id: string;
+  title?: string;
+  reason?: string;
+  criteria?: string[];
+};
 
 export type ForYouEntry = {
   id: string;
@@ -27,7 +35,7 @@ export type ForYouEntry = {
 
 export interface LoggerPort {
   setContext(context: Partial<LoggerContext>): void;
-  countJob?(counter: JobCounter, jobId?: string): void;
+  countJob?(counter: JobCounter, job?: string | CountedJob): void;
   info(...args: unknown[]): void;
   warn(...args: unknown[]): void;
   success(...args: unknown[]): void;

@@ -6,7 +6,7 @@ import { PersistedJobRuleManager } from '@config/rules';
 import { JobRuleScope, PersistedJobRule } from '@config/rules/persisted-job-rule.type';
 import { InteractionActionLabels } from '@ports/interaction.port';
 import { ScannerPreferencesFileRepository } from '@config/scanner-preferences-file.repository';
-import { ForYouEntry, JobCounter, LoggerContext } from '@ports/logger.port';
+import { CountedJob, ForYouEntry, JobCounter, LoggerContext } from '@ports/logger.port';
 import { ManualReviewEntry } from '@shared/types/manual-review-entry.type';
 import { ScannerPreferences } from '@shared/types/scanner-preferences.type';
 import { UndeterminedQueueDecision, UndeterminedQueueEntry } from '@shared/types/undetermined-queue-entry.type';
@@ -20,6 +20,22 @@ export type TerminalLogEntry = {
   level: TerminalLogLevel;
   message: string;
   timestamp: string;
+};
+
+export type TerminalJobEntryStatus = 'processing' | 'success' | 'error' | 'warning' | 'info';
+export type TerminalJobEntryDecision = 'processing' | 'goodFit' | 'notApplicable' | 'unknown' | 'failed';
+
+export type TerminalJobEntry = {
+  id: string;
+  title?: string;
+  link?: string;
+  location?: string;
+  criteria: string[];
+  status: TerminalJobEntryStatus;
+  decision: TerminalJobEntryDecision;
+  phase?: string;
+  message?: string;
+  reason?: string;
 };
 
 export type TerminalInputKey = {
@@ -58,6 +74,7 @@ export type TerminalSessionSnapshot = {
   forYouEntries: ForYouEntry[];
   ruleCatalog: TerminalRuleCatalog;
   jobCounts: Record<JobCounter, number>;
+  jobEntries: TerminalJobEntry[];
   recentLogs: TerminalLogEntry[];
   spawnActions: TerminalSpawnAction[];
   startedAt: Date;
@@ -150,14 +167,54 @@ export class TerminalSessionStore {
   }
 
   public setContext(context: Partial<LoggerContext>): void {
+    const nextContext = this.createNextContext(context);
+
     this.snapshot = {
       ...this.snapshot,
-      context: {
-        ...this.snapshot.context,
-        ...context,
-      },
+      context: nextContext,
+      jobEntries: this.createContextJobEntries(context, nextContext),
     };
     this.emit();
+  }
+
+  private createNextContext(context: Partial<LoggerContext>): LoggerContext {
+    const nextContext = {
+      ...this.snapshot.context,
+      ...context,
+    };
+
+    if (context.jobId !== undefined && context.jobId !== this.snapshot.context.jobId && context.jobTitle === undefined) {
+      return {
+        ...nextContext,
+        jobTitle: undefined,
+      };
+    }
+
+    return nextContext;
+  }
+
+  private createContextJobEntries(
+    context: Partial<LoggerContext>,
+    nextContext: LoggerContext,
+  ): TerminalJobEntry[] {
+    if (!context.jobId) {
+      return this.snapshot.jobEntries;
+    }
+
+    const currentJobEntry = this.findJobEntry(context.jobId);
+
+    if (currentJobEntry && currentJobEntry.status !== 'processing') {
+      return this.snapshot.jobEntries;
+    }
+
+    return this.upsertJobEntry(this.snapshot.jobEntries, {
+      id: context.jobId,
+      title: nextContext.jobTitle,
+      criteria: [],
+      status: 'processing',
+      decision: 'processing',
+      phase: nextContext.phase,
+    });
   }
 
   public setScannerPreferences(preferences: ScannerPreferences): void {
@@ -169,9 +226,9 @@ export class TerminalSessionStore {
     this.emit();
   }
 
-  public countJob(counter: JobCounter, jobId?: string): void {
-    if (jobId) {
-      this.countJobById(counter, jobId);
+  public countJob(counter: JobCounter, job?: string | CountedJob): void {
+    if (job) {
+      this.countJobById(counter, this.createCountedJob(job));
       return;
     }
 
@@ -185,7 +242,8 @@ export class TerminalSessionStore {
     this.emit();
   }
 
-  private countJobById(counter: JobCounter, jobId: string): void {
+  private countJobById(counter: JobCounter, job: CountedJob): void {
+    const jobId = job.id;
     const previousCounter = this.jobCountersById.get(jobId);
 
     if (previousCounter === counter) return;
@@ -194,8 +252,55 @@ export class TerminalSessionStore {
     this.snapshot = {
       ...this.snapshot,
       jobCounts: this.createUpdatedJobCounts(previousCounter, counter),
+      jobEntries: this.upsertJobEntry(this.snapshot.jobEntries, this.createCountedJobEntry(counter, job)),
     };
     this.emit();
+  }
+
+  private createCountedJob(job: string | CountedJob): CountedJob {
+    if (typeof job === 'string') {
+      return {
+        id: job,
+      };
+    }
+
+    return job;
+  }
+
+  private createCountedJobEntry(counter: JobCounter, job: CountedJob): TerminalJobEntry {
+    if (counter === 'forMe') {
+      return {
+        id: job.id,
+        title: job.title,
+        criteria: job.criteria ?? [],
+        status: 'success',
+        decision: 'goodFit',
+        phase: this.snapshot.context.phase,
+        reason: job.reason,
+      };
+    }
+
+    if (counter === 'notApplicable') {
+      return {
+        id: job.id,
+        title: job.title,
+        criteria: job.criteria ?? [],
+        status: 'error',
+        decision: 'notApplicable',
+        phase: this.snapshot.context.phase,
+        reason: job.reason,
+      };
+    }
+
+    return {
+      id: job.id,
+      title: job.title,
+      criteria: job.criteria ?? [],
+      status: 'warning',
+      decision: 'unknown',
+      phase: this.snapshot.context.phase,
+      reason: job.reason,
+    };
   }
 
   private createUpdatedJobCounts(previousCounter: JobCounter | undefined, counter: JobCounter): Record<JobCounter, number> {
@@ -219,8 +324,50 @@ export class TerminalSessionStore {
           }),
         },
       ].slice(-8),
+      jobEntries: this.createLoggedJobEntries(level, message),
     };
     this.emit();
+  }
+
+  private createLoggedJobEntries(level: TerminalLogLevel, message: string): TerminalJobEntry[] {
+    const jobId = this.getActiveJobId();
+
+    if (!jobId) {
+      return this.snapshot.jobEntries;
+    }
+
+    const currentJobEntry = this.findJobEntry(jobId);
+
+    if (currentJobEntry && currentJobEntry.status !== 'processing') {
+      return this.snapshot.jobEntries;
+    }
+
+    if (level === 'error') {
+      return this.upsertJobEntry(this.snapshot.jobEntries, {
+        id: jobId,
+        title: this.snapshot.context.jobTitle,
+        criteria: [],
+        status: 'error',
+        decision: 'failed',
+        phase: this.snapshot.context.phase,
+        message,
+        reason: message,
+      });
+    }
+
+    return this.upsertJobEntry(this.snapshot.jobEntries, {
+      id: jobId,
+      title: this.snapshot.context.jobTitle,
+      criteria: [],
+      status: 'processing',
+      decision: 'processing',
+      phase: this.snapshot.context.phase,
+      message,
+    });
+  }
+
+  private getActiveJobId(): string | undefined {
+    return this.snapshot.manualReviewState?.job.id ?? this.snapshot.context.jobId;
   }
 
   public addForYouEntry(entry: ForYouEntry): void {
@@ -230,6 +377,7 @@ export class TerminalSessionStore {
         entry,
         ...this.snapshot.forYouEntries,
       ].slice(0, 3),
+      jobEntries: this.upsertJobEntry(this.snapshot.jobEntries, this.createJobEntryDetails(entry)),
     };
     this.emit();
   }
@@ -241,6 +389,17 @@ export class TerminalSessionStore {
         entry,
         ...this.snapshot.undeterminedEntries.filter(({ id }) => id !== entry.id),
       ].slice(0, 8),
+      jobEntries: this.upsertJobEntry(this.snapshot.jobEntries, {
+        id: entry.id,
+        title: entry.title,
+        link: entry.link,
+        location: entry.location,
+        criteria: ['Unknown'],
+        status: 'warning',
+        decision: 'unknown',
+        phase: this.snapshot.context.phase,
+        reason: 'No include or exclude keywords matched',
+      }),
     };
     this.emit();
   }
@@ -255,6 +414,17 @@ export class TerminalSessionStore {
       manualReviewState: {
         job,
       },
+      jobEntries: this.upsertJobEntry(this.snapshot.jobEntries, {
+        id: job.id,
+        title: job.title,
+        link: job.link,
+        location: job.location,
+        criteria: job.criteria,
+        status: job.classification === 'include' ? 'success' : 'warning',
+        decision: job.classification === 'include' ? 'goodFit' : 'unknown',
+        phase: this.snapshot.context.phase,
+        reason: this.createManualReviewReason(job),
+      }),
     };
     this.emit();
   }
@@ -279,8 +449,23 @@ export class TerminalSessionStore {
     this.snapshot = {
       ...this.snapshot,
       manualReviewState: undefined,
+      jobEntries: this.createReviewedJobEntries(jobId),
     };
     this.emit();
+  }
+
+  private createReviewedJobEntries(jobId: string): TerminalJobEntry[] {
+    const jobEntry = this.findJobEntry(jobId);
+
+    if (!jobEntry) {
+      return this.snapshot.jobEntries;
+    }
+
+    return this.upsertJobEntry(this.snapshot.jobEntries, {
+      ...jobEntry,
+      phase: 'Reviewed',
+      message: undefined,
+    });
   }
 
   public handleInput(input: string, key: TerminalInputKey = {}): void {
@@ -485,6 +670,66 @@ export class TerminalSessionStore {
     };
   }
 
+  private createJobEntryDetails(entry: ForYouEntry): TerminalJobEntry {
+    return {
+      id: entry.id,
+      title: entry.title,
+      link: entry.link,
+      location: entry.location,
+      criteria: entry.criteria,
+      status: 'info',
+      decision: 'processing',
+      phase: this.snapshot.context.phase,
+    };
+  }
+
+  private createManualReviewReason(job: ManualReviewEntry): string {
+    if (job.classification === 'include') {
+      return this.createCriteriaReason('Matched include keywords', job.criteria);
+    }
+
+    return 'No include or exclude keywords matched';
+  }
+
+  private createCriteriaReason(label: string, criteria: string[]): string {
+    if (!criteria.length) return label;
+
+    return `${label}: ${criteria.join(', ')}`;
+  }
+
+  private upsertJobEntry(entries: TerminalJobEntry[], entry: TerminalJobEntry): TerminalJobEntry[] {
+    const currentEntry = entries.find(({ id }) => id === entry.id);
+    const nextEntry = currentEntry ? this.mergeJobEntry(currentEntry, entry) : entry;
+
+    if (currentEntry) {
+      return entries.map((existingEntry) => existingEntry.id === entry.id ? nextEntry : existingEntry);
+    }
+
+    return [
+      ...entries,
+      nextEntry,
+    ];
+  }
+
+  private mergeJobEntry(currentEntry: TerminalJobEntry, nextEntry: TerminalJobEntry): TerminalJobEntry {
+    return {
+      id: nextEntry.id,
+      title: nextEntry.title ?? currentEntry.title,
+      link: nextEntry.link ?? currentEntry.link,
+      location: nextEntry.location ?? currentEntry.location,
+      criteria: nextEntry.criteria.length ? nextEntry.criteria : currentEntry.criteria,
+      status: nextEntry.status === 'info' ? currentEntry.status : nextEntry.status,
+      decision: nextEntry.decision === 'processing' ? currentEntry.decision : nextEntry.decision,
+      phase: nextEntry.phase ?? currentEntry.phase,
+      message: nextEntry.message ?? currentEntry.message,
+      reason: nextEntry.reason ?? currentEntry.reason,
+    };
+  }
+
+  private findJobEntry(jobId: string): TerminalJobEntry | undefined {
+    return this.snapshot.jobEntries.find(({ id }) => id === jobId);
+  }
+
   private createInitialSnapshot(
     startedAt: Date,
     ruleCatalog: TerminalRuleCatalog,
@@ -501,6 +746,7 @@ export class TerminalSessionStore {
         notApplicable: 0,
         unknown: 0,
       },
+      jobEntries: [],
       recentLogs: [],
       spawnActions: [],
       startedAt,

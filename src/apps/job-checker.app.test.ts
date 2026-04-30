@@ -426,7 +426,12 @@ describe('JobCheckerApp', () => {
     }, executionOptions);
 
     expect(logger.countJob).toHaveBeenCalledTimes(1);
-    expect(logger.countJob).toHaveBeenCalledWith('forMe', '4386875881');
+    expect(logger.countJob).toHaveBeenCalledWith('forMe', {
+      id: '4386875881',
+      title: 'Angular Developer',
+      reason: 'Matched include keywords: Angular',
+      criteria: ['Angular'],
+    });
   });
 
   test('should discard jobs with exclude matches without sending them to unknown review', async () => {
@@ -471,8 +476,13 @@ describe('JobCheckerApp', () => {
     });
     expect(markForManualCheck).not.toHaveBeenCalled();
     expect(markUndeterminedJobForManualCheck).not.toHaveBeenCalled();
-    expect(logger.countJob).toHaveBeenCalledWith('notApplicable', '4386875881');
-    expect(logger.error).toHaveBeenCalledWith('Job "%s" has exclude words: %O', '4386875881', ['PHP']);
+    expect(logger.countJob).toHaveBeenCalledWith('notApplicable', {
+      id: '4386875881',
+      title: 'PHP Backend Developer',
+      reason: 'Excluded keywords: PHP',
+      criteria: ['PHP'],
+    });
+    expect(logger.error).toHaveBeenCalledWith('Job "%s" has exclude words: %O', 'PHP Backend Developer', ['PHP']);
   });
 
   test('should keep unknown jobs hidden from manual review when execution option is disabled', async () => {
@@ -516,7 +526,12 @@ describe('JobCheckerApp', () => {
     expect(jobRepository.update).toHaveBeenCalledWith('4386875881', {
       status: JobStatus.undetermined,
     });
-    expect(logger.countJob).toHaveBeenCalledWith('unknown', '4386875881');
+    expect(logger.countJob).toHaveBeenCalledWith('unknown', {
+      id: '4386875881',
+      title: 'TypeScript Developer',
+      reason: 'No include or exclude keywords matched',
+      criteria: undefined,
+    });
     expect(logger.countJob).not.toHaveBeenCalledWith('forMe', '4386875881');
     expect(logger.forYou).not.toHaveBeenCalled();
     expect(logger.trackUndetermined).not.toHaveBeenCalled();
@@ -566,16 +581,23 @@ describe('JobCheckerApp', () => {
       runMode: 'manual-review',
       phase: 'Waiting manual review',
       jobId: '4386875881',
+      jobTitle: 'Programador full stack',
     });
     expect(logger.setContext).toHaveBeenNthCalledWith(2, {
       runMode: 'default',
       phase: 'Resuming scan',
       jobId: '4386875881',
+      jobTitle: 'Programador full stack',
     });
     expect(jobRepository.update).toHaveBeenCalledWith('4386875881', {
       status: JobStatus.dissmissed,
     });
-    expect(logger.countJob).toHaveBeenCalledWith('unknown', '4386875881');
+    expect(logger.countJob).toHaveBeenCalledWith('unknown', {
+      id: '4386875881',
+      title: 'Programador full stack',
+      reason: 'No include or exclude keywords matched',
+      criteria: undefined,
+    });
     expect(interaction.startManualReview).toHaveBeenCalledWith({
       id: '4386875881',
       title: 'Programador full stack',
@@ -631,7 +653,12 @@ describe('JobCheckerApp', () => {
     });
 
     expect(logger.countJob).toHaveBeenNthCalledWith(1, 'notApplicable', '4386875881');
-    expect(logger.countJob).toHaveBeenNthCalledWith(2, 'forMe', '4386875881');
+    expect(logger.countJob).toHaveBeenNthCalledWith(2, 'forMe', {
+      id: '4386875881',
+      title: 'Angular Developer',
+      reason: 'Matched include keywords: Angular',
+      criteria: ['Angular'],
+    });
   });
 
   test('should treat undetermined jobs like manual review matches', async () => {
@@ -685,7 +712,12 @@ describe('JobCheckerApp', () => {
       criteria: ['Unknown'],
     });
     expect(logger.countJob).toHaveBeenCalledTimes(1);
-    expect(logger.countJob).toHaveBeenCalledWith('unknown', '4386875881');
+    expect(logger.countJob).toHaveBeenCalledWith('unknown', {
+      id: '4386875881',
+      title: 'Angular Developer',
+      reason: 'No include or exclude keywords matched',
+      criteria: undefined,
+    });
     expect(logger.countJob).not.toHaveBeenCalledWith('forMe', '4386875881');
     expect((app as any).jobsSearchPage.markJobForReview).toHaveBeenCalledWith('4386875881');
     expect((app as any).jobsSearchPage.waitForJobToBeDismissed).toHaveBeenCalledWith('4386875881');

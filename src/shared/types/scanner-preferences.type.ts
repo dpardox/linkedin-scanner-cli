@@ -5,6 +5,7 @@ export type LocationKey = keyof typeof Location;
 
 export type ScannerPreferences = {
   searchQueries: string[];
+  strictSearchMode: boolean;
   locationKeys: LocationKey[];
   languages: string[];
   restrictedLocations: string[];

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 const mocks = vi.hoisted(() => {
   const scannerPreferences = {
     searchQueries: ['angular'],
+    strictSearchMode: false,
     locationKeys: ['colombia'],
     languages: ['spa'],
     restrictedLocations: [],

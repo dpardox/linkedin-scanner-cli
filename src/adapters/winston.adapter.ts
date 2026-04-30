@@ -9,7 +9,7 @@ import { LanguageCode } from '@enums/language-code.enum';
 import { Location } from '@enums/location.enum';
 import { WorkType } from '@enums/work-type.enum';
 import { InteractionActionLabels, InteractionPort } from '@ports/interaction.port';
-import { ForYouEntry, JobCounter, LoggerContext, LoggerPort } from '@ports/logger.port';
+import { CountedJob, ForYouEntry, JobCounter, LoggerContext, LoggerPort } from '@ports/logger.port';
 import { ExecutionOptions } from '@shared/types/execution-options.type';
 import { ManualReviewEntry } from '@shared/types/manual-review-entry.type';
 import { LocationKey, ScannerPreferences } from '@shared/types/scanner-preferences.type';
@@ -32,8 +32,8 @@ type WinstonAdapterOptions = {
 
 export class WinstonAdapter implements LoggerPort, InteractionPort {
 
-  private static readonly showUnknownJobsAnswerYes = 'y';
-  private static readonly showUnknownJobsAnswerNo = 'n';
+  private static readonly booleanAnswerYes = 'y';
+  private static readonly booleanAnswerNo = 'n';
   private static readonly locationOptions = Object.keys(Location)
     .filter((locationKey) => Number.isNaN(Number(locationKey)))
     .map((locationKey) => ({
@@ -95,8 +95,8 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
     this.terminalSessionStore.setContext(context);
   }
 
-  public countJob(counter: JobCounter, jobId?: string): void {
-    this.terminalSessionStore.countJob(counter, jobId);
+  public countJob(counter: JobCounter, job?: string | CountedJob): void {
+    this.terminalSessionStore.countJob(counter, job);
   }
 
   public info(message: string, ...args: unknown[]): void {
@@ -257,6 +257,7 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
       'Separate multiple search queries with commas. Press Enter to keep the current value.',
       defaultPreferences.searchQueries,
     );
+    const strictSearchMode = await this.askStrictSearchMode(defaultPreferences.strictSearchMode);
     const locationKeys = await this.askLocationKeys(defaultPreferences.locationKeys);
     const languages = await this.askLanguages(defaultPreferences.languages);
     const workType = await this.askWorkType(defaultPreferences.filters.workType);
@@ -281,6 +282,7 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
     return {
       ...defaultPreferences,
       searchQueries,
+      strictSearchMode,
       locationKeys,
       languages,
       filters: {
@@ -305,6 +307,14 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
     if (!values.length) return defaultValues;
 
     return values;
+  }
+
+  private async askStrictSearchMode(defaultValue: boolean): Promise<boolean> {
+    return await this.askBoolean(
+      'Should strict search mode be enabled?',
+      'Select Yes to scan with double quotes first, or No to scan without the strict pass. Press Enter to keep the current selection.',
+      defaultValue,
+    );
   }
 
   private async askLocationKeys(defaultLocationKeys: LocationKey[]): Promise<LocationKey[]> {
@@ -346,14 +356,14 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
       title,
       detail,
       options: [
-        { label: 'Yes', value: WinstonAdapter.showUnknownJobsAnswerYes },
-        { label: 'No', value: WinstonAdapter.showUnknownJobsAnswerNo },
+        { label: 'Yes', value: WinstonAdapter.booleanAnswerYes },
+        { label: 'No', value: WinstonAdapter.booleanAnswerNo },
       ],
-      selectedValues: [defaultValue ? WinstonAdapter.showUnknownJobsAnswerYes : WinstonAdapter.showUnknownJobsAnswerNo],
+      selectedValues: [defaultValue ? WinstonAdapter.booleanAnswerYes : WinstonAdapter.booleanAnswerNo],
       multiple: false,
     });
 
-    return selectedValue[0] === WinstonAdapter.showUnknownJobsAnswerYes;
+    return selectedValue[0] === WinstonAdapter.booleanAnswerYes;
   }
 
   private async askIncludeKeywordRuleIds(defaultRuleIds: string[]): Promise<string[]> {

@@ -53,6 +53,7 @@ describe('ScannerPreferencesFileRepository', () => {
       excludeRuleIds: ['english'],
       includeKeywords: ['frontend'],
       excludeKeywords: ['backend'],
+      strictSearchMode: true,
       showUnknownJobs: true,
     };
 
@@ -70,9 +71,31 @@ describe('ScannerPreferencesFileRepository', () => {
       { scope: 'include', keyword: 'frontend' },
       { scope: 'exclude', keyword: 'backend' },
     ]);
+    expect(JSON.parse(fs.readFileSync(path.join(directoryPath, 'search-options.json'), 'utf-8'))).toEqual({
+      strictSearchMode: true,
+    });
     expect(JSON.parse(fs.readFileSync(path.join(directoryPath, 'execution-options.json'), 'utf-8'))).toEqual({
       showUnknownJobs: true,
     });
+  });
+
+  test('should normalize persisted single-term exact job searches', () => {
+    const directoryPath = createTemporaryPreferencesDirectory();
+    const repository = new ScannerPreferencesFileRepository({
+      directoryPath,
+    });
+    const preferences = {
+      ...defaultScannerPreferences,
+      searchQueries: ['"angular"', 'angular', '"frontend developer"'],
+    };
+
+    repository.write(preferences);
+
+    expect(repository.read().searchQueries).toEqual(['angular', '"frontend developer"']);
+    expect(readJsonLines(path.join(directoryPath, 'search-queries.jsonl'))).toEqual([
+      { query: 'angular' },
+      { query: '"frontend developer"' },
+    ]);
   });
 
   test('should read legacy preferences when database preferences do not exist', () => {

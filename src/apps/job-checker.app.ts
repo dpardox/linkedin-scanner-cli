@@ -4,7 +4,7 @@ import { matchWholeWord } from '@utils/match-whole-word.util';
 import { SearchResultsContentPage } from '@core/pages/searchResultsContent.page';
 import { InteractionPort } from '@ports/interaction.port';
 import { NotifierPort } from '@ports/notifier.port';
-import { JobCounter, LoggerPort } from '@ports/logger.port';
+import { CountedJob, JobCounter, LoggerPort } from '@ports/logger.port';
 import { JobStatus } from '@enums/job-status.enum';
 import { normalize } from '@utils/normalize.util';
 import { ExpandedJobSearchConfig, JobSearchConfig } from '@shared/types/job-search-config.type';
@@ -27,6 +27,11 @@ type JobMatchClassification = 'include' | 'exclude' | 'unknown';
 type JobMatchEvaluation = {
   classification: JobMatchClassification;
   criteria: string[];
+};
+
+type CountJobDetails = {
+  reason?: string;
+  criteria?: string[];
 };
 
 export class JobCheckerApp {
@@ -279,19 +284,38 @@ export class JobCheckerApp {
     return ids;
   }
 
-  private countJob(jobId: string, counter: JobCounter): void {
+  private countJob(job: string | JobModel, counter: JobCounter, details: CountJobDetails = {}): void {
+    const jobId = this.resolveCountedJobId(job);
+
     if (this.jobCountersById.get(jobId) === counter) return;
 
     this.jobCountersById.set(jobId, counter);
-    this.logger.countJob?.(counter, jobId);
+    this.logger.countJob?.(counter, this.createCountedJob(job, details));
+  }
+
+  private resolveCountedJobId(job: string | JobModel): string {
+    if (typeof job === 'string') return job;
+
+    return job.id;
+  }
+
+  private createCountedJob(job: string | JobModel, details: CountJobDetails): string | CountedJob {
+    if (typeof job === 'string') return job;
+
+    return {
+      id: job.id,
+      title: job.title,
+      reason: details.reason,
+      criteria: details.criteria,
+    };
   }
 
   private async checkJob(jobId: string, config: ExpandedJobSearchConfig, executionOptions: ExecutionOptions): Promise<void> {
     this.logger.setContext({ phase: 'Evaluating job', jobId });
     const jobModel = await this.getJobDetails(jobId);
 
-    if (await this.isDissmissedJob(jobId)) return;
-    if (await this.isAppliedJob(jobId)) return;
+    if (await this.isDissmissedJob(jobModel)) return;
+    if (await this.isAppliedJob(jobModel)) return;
     if (!await this.hasValidLanguage(jobModel, config.languages)) return;
 
     const jobMatchEvaluation = await this.evaluateJobMatch(jobModel, config);
@@ -318,6 +342,7 @@ export class JobCheckerApp {
     this.logger.setContext({ phase: 'Extracting job details', jobId });
     await this.jobsSearchPage.selectJob(jobId);
     const jobModel = await this.jobsSearchPage.getJobDetails(jobId);
+    this.logger.setContext({ phase: 'Evaluating job', jobId: jobModel.id, jobTitle: jobModel.title });
     return await this.serializeJob(jobId, async () => await this.jobRepository.upsert(jobId, jobModel));
   }
 
@@ -329,34 +354,37 @@ export class JobCheckerApp {
     }, action);
   }
 
-  private async isDissmissedJob(jobId: string): Promise<boolean> {
-    this.logger.info('Checking if job "%s" is dissmissed...', jobId);
-    if (await this.jobsSearchPage.isDissmissedJob(jobId)) {
-      await this.updateJobStatus(jobId, JobStatus.dissmissed);
+  private async isDissmissedJob(job: JobModel): Promise<boolean> {
+    this.logger.info('Checking if job "%s" is dissmissed...', job.title);
+    if (await this.jobsSearchPage.isDissmissedJob(job.id)) {
+      this.countJob(job, 'notApplicable', { reason: 'Dismissed in LinkedIn' });
+      await this.updateJobStatus(job.id, JobStatus.dissmissed);
       return true;
-    };
+    }
     return false;
   }
 
-  private async isAppliedJob(jobId: string): Promise<boolean> {
-    this.logger.info('Checking if job "%s" is applied...', jobId);
-    if (await this.jobsSearchPage.isAppliedJob(jobId)) {
-      this.logger.warn(`You already applied to job "%s".`, jobId);
-      await this.updateJobStatus(jobId, JobStatus.dissmissed);
+  private async isAppliedJob(job: JobModel): Promise<boolean> {
+    this.logger.info('Checking if job "%s" is applied...', job.title);
+    if (await this.jobsSearchPage.isAppliedJob(job.id)) {
+      this.countJob(job, 'notApplicable', { reason: 'Already applied' });
+      this.logger.warn('You already applied to job "%s".', job.title);
+      await this.updateJobStatus(job.id, JobStatus.dissmissed);
       return true;
     }
     return false;
   }
 
   private async hasValidLanguage(job: JobModel, languages: string[] = []): Promise<boolean> {
-    this.logger.info('Checking if job "%s" has valid language...', job.id);
+    this.logger.info('Checking if job "%s" has valid language...', job.title);
 
     const language = job.language(this.langDetector);
 
     const allowedLanguages = languages.length ? languages : ['eng', 'spa'];
 
     if (!allowedLanguages.includes(language)) {
-      this.logger.error('Job "%s" has invalid language: %s', job.id, language);
+      this.countJob(job, 'notApplicable', { reason: `Unsupported language: ${language}` });
+      this.logger.error('Job "%s" has invalid language: %s', job.title, language);
       await this.updateJobStatus(job.id, JobStatus.dissmissed);
       return false;
     }
@@ -365,7 +393,7 @@ export class JobCheckerApp {
   }
 
   private async evaluateJobMatch(job: JobModel, config: ExpandedJobSearchConfig): Promise<JobMatchEvaluation> {
-    this.logger.info('Checking if job "%s" is a good fit...', job.id);
+    this.logger.info('Checking if job "%s" is a good fit...', job.title);
 
     if (await this.jobIsClosed(job)) {
       return {
@@ -408,7 +436,8 @@ export class JobCheckerApp {
 
   private async jobIsClosed(job: JobModel): Promise<boolean> {
     if (job.isClosed) {
-      this.logger.error('Job "%s" is closed!', job.id);
+      this.countJob(job, 'notApplicable', { reason: 'Closed job post' });
+      this.logger.error('Job "%s" is closed!', job.title);
       await this.skipJob(job);
       return true;
     }
@@ -420,8 +449,8 @@ export class JobCheckerApp {
     const hasRestrictedLocations = restrictedLocations.some(x => location?.includes(normalize(x)));
 
     if (hasRestrictedLocations) {
-      this.countJob(job.id, 'notApplicable');
-      this.logger.error('Job "%s" has restricted location: %s', job.id, job.location);
+      this.countJob(job, 'notApplicable', { reason: `Restricted location: ${job.location}` });
+      this.logger.error('Job "%s" has restricted location: %s', job.title, job.location);
       await this.skipJob(job);
       return true;
     }
@@ -429,8 +458,11 @@ export class JobCheckerApp {
   }
 
   private async discardJobByExcludeTerms(job: JobModel, excludeTerms: string[]): Promise<void> {
-    this.countJob(job.id, 'notApplicable');
-    this.logger.error('Job "%s" has exclude words: %O', job.id, excludeTerms);
+    this.countJob(job, 'notApplicable', {
+      reason: this.createKeywordReason('Excluded keywords', excludeTerms),
+      criteria: excludeTerms,
+    });
+    this.logger.error('Job "%s" has exclude words: %O', job.title, excludeTerms);
     await this.skipJob(job);
   }
 
@@ -439,7 +471,7 @@ export class JobCheckerApp {
 
     if (!matchedKeywords.length) return [];
 
-    this.logger.success('Job "%s" has include words: %O', job.id, matchedKeywords);
+    this.logger.success('Job "%s" has include words: %O', job.title, matchedKeywords);
     return matchedKeywords;
   }
 
@@ -457,9 +489,9 @@ export class JobCheckerApp {
   }
 
   private async markUndeterminedJob(job: JobModel): Promise<void> {
-    this.logger.setContext({ phase: 'Marking undetermined', jobId: job.id });
-    this.countJob(job.id, 'unknown');
-    this.logger.warn('Marking job "%s" as undetermined...', job.id);
+    this.logger.setContext({ phase: 'Marking undetermined', jobId: job.id, jobTitle: job.title });
+    this.countJob(job, 'unknown', { reason: 'No include or exclude keywords matched' });
+    this.logger.warn('Job "%s" has no include or exclude keyword matches.', job.title);
     await this.updateJobStatus(job.id, JobStatus.undetermined);
   }
 
@@ -467,8 +499,11 @@ export class JobCheckerApp {
     job: JobModel,
     criteria: string[],
   ): ManualReviewEntry {
-    this.logger.setContext({ phase: 'Potential match found', jobId: job.id });
-    this.countJob(job.id, 'forMe');
+    this.logger.setContext({ phase: 'Potential match found', jobId: job.id, jobTitle: job.title });
+    this.countJob(job, 'forMe', {
+      reason: this.createKeywordReason('Matched include keywords', criteria),
+      criteria,
+    });
     this.logger.info('Potential match found!');
     const manualReviewEntry = this.createManualReviewEntry(job, criteria, 'include');
 
@@ -478,7 +513,7 @@ export class JobCheckerApp {
   }
 
   private showUnknownJob(job: JobModel): ManualReviewEntry {
-    this.logger.setContext({ phase: 'Unknown job found', jobId: job.id });
+    this.logger.setContext({ phase: 'Unknown job found', jobId: job.id, jobTitle: job.title });
     this.logger.info('Unknown job found.');
     const manualReviewEntry = this.createManualReviewEntry(job, ['Unknown'], 'unknown');
 
@@ -500,9 +535,9 @@ export class JobCheckerApp {
   }
 
   private async markForManualCheck(job: JobModel, manualReviewEntry: ManualReviewEntry): Promise<void> {
-    this.logger.setContext({ runMode: 'manual-review', phase: 'Waiting manual review', jobId: job.id });
-    this.countManualReviewJob(job.id, manualReviewEntry.classification);
-    this.logger.info('Marking job "%s" for manual check...', job.id);
+    this.logger.setContext({ runMode: 'manual-review', phase: 'Waiting manual review', jobId: job.id, jobTitle: job.title });
+    this.countManualReviewJob(job, manualReviewEntry);
+    this.logger.info('Marking job "%s" for manual check...', job.title);
     this.interaction.startManualReview(manualReviewEntry);
     await this.jobsSearchPage.markJobForReview(job.id);
     this.notifier.notify();
@@ -511,18 +546,27 @@ export class JobCheckerApp {
     } finally {
       this.interaction.finishManualReview(job.id);
     }
-    this.logger.setContext({ runMode: 'default', phase: 'Resuming scan', jobId: job.id });
+    this.logger.setContext({ runMode: 'default', phase: 'Resuming scan', jobId: job.id, jobTitle: job.title });
     await this.updateJobStatus(job.id, JobStatus.dissmissed);
     this.logger.success('Job "%s" reviewed!', job.title);
   }
 
-  private countManualReviewJob(jobId: string, classification: ManualReviewEntry['classification']): void {
-    if (classification === 'include') {
-      this.countJob(jobId, 'forMe');
+  private countManualReviewJob(job: JobModel, manualReviewEntry: ManualReviewEntry): void {
+    if (manualReviewEntry.classification === 'include') {
+      this.countJob(job, 'forMe', {
+        reason: this.createKeywordReason('Matched include keywords', manualReviewEntry.criteria),
+        criteria: manualReviewEntry.criteria,
+      });
       return;
     }
 
-    this.countJob(jobId, 'unknown');
+    this.countJob(job, 'unknown', { reason: 'No include or exclude keywords matched' });
+  }
+
+  private createKeywordReason(label: string, keywords: string[]): string {
+    if (!keywords.length) return label;
+
+    return `${label}: ${keywords.join(', ')}`;
   }
 
   private async updateJobStatus(jobId: string, status: JobStatus): Promise<void> {

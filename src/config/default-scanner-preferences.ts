@@ -5,7 +5,8 @@ import { restrictedLocationsKeywords } from './keywords/restricted-locations.key
 import { additionalExcludeKeywordRuleIds } from './rules/default-persisted-job-rules';
 
 export const defaultScannerPreferences: ScannerPreferences = {
-  searchQueries: ['"angular"', 'angular'],
+  searchQueries: ['angular'],
+  strictSearchMode: false,
   locationKeys: [
     'worldwide',
     'spain',

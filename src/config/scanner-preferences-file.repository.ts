@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { ScannerPreferencesPath } from '@enums/scanner-preferences-path.enum';
 import { LocationKey, ScannerPreferences } from '@shared/types/scanner-preferences.type';
+import { normalizeJobSearchQueries } from '@utils/job-search-query.util';
 import { type JobRuleScope } from './rules';
 import { defaultScannerPreferences } from './default-scanner-preferences';
 
@@ -40,6 +41,10 @@ type ContentSearchRecord = {
   query: string;
 };
 
+type SearchOptionsRecord = {
+  strictSearchMode: boolean;
+};
+
 type ExecutionOptionsRecord = {
   showUnknownJobs: boolean;
 };
@@ -53,6 +58,7 @@ type ScannerPreferencesFiles = {
   additionalKeywords: string;
   filters: string;
   contentSearch: string;
+  searchOptions: string;
   executionOptions: string;
 };
 
@@ -87,7 +93,9 @@ export class ScannerPreferencesFileRepository {
       fs.mkdirSync(this.directoryPath, { recursive: true });
     }
 
-    this.writeJsonLines(this.files.searchQueries, preferences.searchQueries.map((query) => ({ query })));
+    const searchQueryRecords = normalizeJobSearchQueries(preferences.searchQueries).map((query) => ({ query }));
+
+    this.writeJsonLines(this.files.searchQueries, searchQueryRecords);
     this.writeJsonLines(this.files.locations, preferences.locationKeys.map((key) => ({ key })));
     this.writeJsonLines(this.files.languages, preferences.languages.map((code) => ({ code })));
     this.writeJsonLines(this.files.restrictedLocations, preferences.restrictedLocations.map((location) => ({ location })));
@@ -95,6 +103,7 @@ export class ScannerPreferencesFileRepository {
     this.writeJsonLines(this.files.additionalKeywords, this.createAdditionalKeywordRecords(preferences));
     this.writeJson(this.files.filters, preferences.filters);
     this.writeJson(this.files.contentSearch, { query: preferences.contentSearchQuery });
+    this.writeJson(this.files.searchOptions, { strictSearchMode: preferences.strictSearchMode });
     this.writeJson(this.files.executionOptions, { showUnknownJobs: preferences.showUnknownJobs });
   }
 
@@ -115,10 +124,15 @@ export class ScannerPreferencesFileRepository {
     const ruleSelections = this.readJsonLines<RuleSelectionRecord>(this.files.ruleSelections);
     const additionalKeywords = this.readJsonLines<AdditionalKeywordRecord>(this.files.additionalKeywords);
     const contentSearch = this.readJson<Partial<ContentSearchRecord>>(this.files.contentSearch, {});
+    const searchOptions = this.readJson<Partial<SearchOptionsRecord>>(this.files.searchOptions, {});
     const executionOptions = this.readJson<Partial<ExecutionOptionsRecord>>(this.files.executionOptions, {});
+    const searchQueries = normalizeJobSearchQueries(
+      this.readJsonLines<SearchQueryRecord>(this.files.searchQueries).map(({ query }) => query),
+    );
 
     return this.mergePreferences({
-      searchQueries: this.readJsonLines<SearchQueryRecord>(this.files.searchQueries).map(({ query }) => query),
+      searchQueries,
+      strictSearchMode: searchOptions.strictSearchMode,
       locationKeys: this.readJsonLines<LocationRecord>(this.files.locations).map(({ key }) => key),
       languages: this.readJsonLines<LanguageRecord>(this.files.languages).map(({ code }) => code),
       restrictedLocations: this.readJsonLines<RestrictedLocationRecord>(this.files.restrictedLocations).map(({ location }) => location),
@@ -134,7 +148,12 @@ export class ScannerPreferencesFileRepository {
 
   private readLegacyPreferences(): ScannerPreferences {
     const parsedPreferences = JSON.parse(fs.readFileSync(this.legacyFilePath, 'utf-8')) as Partial<ScannerPreferences>;
-    return this.mergePreferences(parsedPreferences);
+    const preferences = this.mergePreferences(parsedPreferences);
+
+    return {
+      ...preferences,
+      searchQueries: normalizeJobSearchQueries(preferences.searchQueries),
+    };
   }
 
   private createRuleSelectionRecords(preferences: ScannerPreferences): RuleSelectionRecord[] {
@@ -261,6 +280,7 @@ export class ScannerPreferencesFileRepository {
       additionalKeywords: path.join(this.directoryPath, 'additional-keywords.jsonl'),
       filters: path.join(this.directoryPath, 'search-filters.json'),
       contentSearch: path.join(this.directoryPath, 'content-search.json'),
+      searchOptions: path.join(this.directoryPath, 'search-options.json'),
       executionOptions: path.join(this.directoryPath, 'execution-options.json'),
     };
   }
