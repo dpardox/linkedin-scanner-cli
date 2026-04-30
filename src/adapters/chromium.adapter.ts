@@ -86,9 +86,21 @@ export class ChromiumAdapter implements BrowserPort {
   }
 
   public async close(): Promise<void> {
+    if (!this.browser.isConnected()) {
+      return;
+    }
+
     this.logger.warn('Closing browser...');
-    await this.browserContext.close();
+    await this.closeBrowserContext();
     await this.browser.close();
+  }
+
+  private async closeBrowserContext(): Promise<void> {
+    if (this.browserContext.pages().length === 0) {
+      return;
+    }
+
+    await this.browserContext.close();
   }
 
   public isClosed(): boolean {

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Text, render, useInput } from 'ink';
+import { MultiSelect } from '@inkjs/ui';
 
 export type TerminalMultiSelectOption<T extends string> = {
   label: string;
@@ -14,11 +15,6 @@ type TerminalMultiSelectPromptProps<T extends string> = {
   multiple?: boolean;
   limit?: number;
   onSubmit: (values: T[]) => void;
-};
-
-type ListedItem = {
-  label: string;
-  value: string;
 };
 
 const inputActivationDelayMs = 100;
@@ -75,13 +71,10 @@ function TerminalMultiSelectPrompt<T extends string>({
   limit,
   onSubmit,
 }: TerminalMultiSelectPromptProps<T>): React.JSX.Element {
-  const items = options.map((option) => ({
-    label: option.label,
-    value: option.value,
-  }));
-  const [selectedItems, setSelectedItems] = useState<ListedItem[]>(() => selectItems(items, selectedValues));
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [acceptingInput, setAcceptingInput] = useState(false);
+  const [singleSelectedValues, setSingleSelectedValues] = useState(selectedValues);
+  const optionValues = options.map((option) => option.value);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -103,89 +96,71 @@ function TerminalMultiSelectPrompt<T extends string>({
       return;
     }
 
-    if (key.upArrow || input === 'k') {
-      setHighlightedIndex((index) => moveHighlightedIndex(index, items.length, -1));
-      return;
+    if (!multiple && key.upArrow) {
+      setHighlightedIndex((index) => moveHighlightedIndex(index, optionValues.length, -1));
     }
 
-    if (key.downArrow || input === 'j') {
-      setHighlightedIndex((index) => moveHighlightedIndex(index, items.length, 1));
-      return;
-    }
-
-    if (input === ' ') {
-      const item = items[highlightedIndex];
-      setSelectedItems((currentItems) => toggleSelectedItem(currentItems, item, multiple));
-      return;
-    }
-
-    if (key.return) {
-      onSubmit(selectedItems.map((item) => String(item.value) as T));
+    if (!multiple && key.downArrow) {
+      setHighlightedIndex((index) => moveHighlightedIndex(index, optionValues.length, 1));
     }
   });
+
+  const handleChange = (values: string[]) => {
+    if (multiple) return;
+
+    setSingleSelectedValues(selectSingleValue(values, singleSelectedValues, optionValues, highlightedIndex) as T[]);
+    setHighlightedIndex(0);
+  };
+
+  const handleSubmit = (values: string[]) => {
+    const submittedValues = multiple
+      ? values
+      : selectSingleValue(values, singleSelectedValues, optionValues, highlightedIndex);
+
+    if (submittedValues.length) {
+      onSubmit(submittedValues as T[]);
+      return;
+    }
+
+    onSubmit(selectedValues);
+  };
 
   return (
     <Box flexDirection="column">
       <Text><Text color="yellow">›</Text> <Text bold>{title}</Text></Text>
-      {visibleItems(items, highlightedIndex, limit).map((item) => (
-        <Box key={item.value}>
-          <Box marginRight={1}>
-            <Text color={isHighlighted(items, item, highlightedIndex) ? 'blue' : undefined}>
-              {isHighlighted(items, item, highlightedIndex) ? '›' : ' '}
-            </Text>
-          </Box>
-          <Box marginRight={1}>
-            <Text color="green">{isSelected(selectedItems, item) ? '◉' : '○'}</Text>
-          </Box>
-          <Text color={isHighlighted(items, item, highlightedIndex) ? 'blue' : undefined}>{item.label}</Text>
-        </Box>
-      ))}
+      <MultiSelect
+        key={multiple ? 'multiple' : singleSelectedValues.join(',')}
+        isDisabled={!acceptingInput}
+        visibleOptionCount={limit}
+        options={options}
+        defaultValue={multiple ? selectedValues : singleSelectedValues}
+        onChange={handleChange}
+        onSubmit={handleSubmit}
+      />
       <Text dimColor>({detail})</Text>
     </Box>
   );
 }
 
-function visibleItems(items: ListedItem[], highlightedIndex: number, limit = items.length): ListedItem[] {
-  if (items.length <= limit) return items;
-
-  const firstVisibleIndex = highlightedIndex < limit
-    ? 0
-    : Math.min(highlightedIndex - limit + 1, items.length - limit);
-  return items.slice(firstVisibleIndex, firstVisibleIndex + limit);
-}
-
 function moveHighlightedIndex(currentIndex: number, itemsLength: number, offset: number): number {
   const nextIndex = currentIndex + offset;
-  if (nextIndex < 0) return itemsLength - 1;
-  if (nextIndex >= itemsLength) return 0;
+  if (nextIndex < 0) return 0;
+  if (nextIndex >= itemsLength) return itemsLength - 1;
 
   return nextIndex;
 }
 
-function selectItems<T extends string>(items: ListedItem[], selectedValues: T[]): ListedItem[] {
-  return items.filter((item) => selectedValues.includes(String(item.value) as T));
-}
+function selectSingleValue<T extends string>(
+  values: string[],
+  previousValues: T[],
+  optionValues: T[],
+  highlightedIndex: number,
+): T[] {
+  const newValue = values.find((value) => !previousValues.includes(value as T));
+  if (newValue) return [newValue as T];
 
-function toggleSelectedItem(items: ListedItem[], item: ListedItem, multiple: boolean): ListedItem[] {
-  if (isSelected(items, item)) {
-    return unselectItem(items, item);
-  }
+  const highlightedValue = optionValues[highlightedIndex];
+  if (highlightedValue && values.includes(highlightedValue)) return [highlightedValue];
 
-  if (!multiple) {
-    return [item];
-  }
-
-  return [...items, item];
-}
-
-function isHighlighted(items: ListedItem[], item: ListedItem, highlightedIndex: number): boolean {
-  return items[highlightedIndex].value === item.value;
-}
-
-function isSelected(items: ListedItem[], item: ListedItem): boolean {
-  return items.some(({ value }) => value === item.value);
-}
-
-function unselectItem(items: ListedItem[], item: ListedItem): ListedItem[] {
-  return items.filter(({ value }) => value !== item.value);
+  return values.slice(-1) as T[];
 }

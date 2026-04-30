@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => {
 
   return {
     run: vi.fn().mockResolvedValue(undefined),
+    closeRuntime: vi.fn(),
     writePreferences: vi.fn(),
     createScannerConfig: vi.fn(() => scannerConfig),
     readPreferences: vi.fn(() => scannerPreferences),
@@ -48,6 +49,7 @@ vi.mock('@apps/factories/job-checker.factory', () => ({
       selectExecutionOptions: mocks.selectExecutionOptions,
       runAction: mocks.runAction,
     },
+    close: mocks.closeRuntime,
   })),
 }));
 
@@ -67,6 +69,7 @@ describe('Main', () => {
   beforeEach(() => {
     vi.resetModules();
     mocks.run.mockClear();
+    mocks.closeRuntime.mockClear();
     mocks.writePreferences.mockClear();
     mocks.createScannerConfig.mockClear();
     mocks.readPreferences.mockClear();
@@ -92,6 +95,7 @@ describe('Main', () => {
     expect(mocks.createScannerConfig).toHaveBeenCalledWith(mocks.scannerPreferences);
     expect(mocks.selectExecutionOptions).toHaveBeenCalledWith({ showUnknownJobs: true });
     expect(mocks.run).toHaveBeenCalledWith(mocks.scannerConfig, { showUnknownJobs: true });
+    expect(mocks.closeRuntime).toHaveBeenCalledOnce();
   });
 
 });

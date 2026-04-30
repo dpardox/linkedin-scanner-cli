@@ -78,6 +78,7 @@ export class TerminalSessionStore {
   private readonly listeners = new Set<TerminalSessionListener>();
   private readonly preferencesRepository: ScannerPreferencesFileRepository;
   private readonly ruleManager: PersistedJobRuleManager;
+  private readonly jobCountersById = new Map<string, JobCounter>();
   private snapshot: TerminalSessionSnapshot;
 
   constructor(
@@ -168,7 +169,12 @@ export class TerminalSessionStore {
     this.emit();
   }
 
-  public countJob(counter: JobCounter): void {
+  public countJob(counter: JobCounter, jobId?: string): void {
+    if (jobId) {
+      this.countJobById(counter, jobId);
+      return;
+    }
+
     this.snapshot = {
       ...this.snapshot,
       jobCounts: {
@@ -177,6 +183,27 @@ export class TerminalSessionStore {
       },
     };
     this.emit();
+  }
+
+  private countJobById(counter: JobCounter, jobId: string): void {
+    const previousCounter = this.jobCountersById.get(jobId);
+
+    if (previousCounter === counter) return;
+
+    this.jobCountersById.set(jobId, counter);
+    this.snapshot = {
+      ...this.snapshot,
+      jobCounts: this.createUpdatedJobCounts(previousCounter, counter),
+    };
+    this.emit();
+  }
+
+  private createUpdatedJobCounts(previousCounter: JobCounter | undefined, counter: JobCounter): Record<JobCounter, number> {
+    return {
+      ...this.snapshot.jobCounts,
+      ...(previousCounter ? { [previousCounter]: this.snapshot.jobCounts[previousCounter] - 1 } : {}),
+      [counter]: this.snapshot.jobCounts[counter] + 1,
+    };
   }
 
   public trackLog(level: TerminalLogLevel, message: string): void {
@@ -304,8 +331,12 @@ export class TerminalSessionStore {
     this.insertDraftInput(input);
   }
 
+  public saveExcludeKeyword(value: string): boolean {
+    return this.saveRule('exclude', this.getExcludeRuleValue(value));
+  }
+
   private submitDraft(): void {
-    this.saveRule('exclude', this.getExcludeRuleValue(this.snapshot.excludeDraft.value));
+    this.saveExcludeKeyword(this.snapshot.excludeDraft.value);
   }
 
   private getExcludeRuleValue(value: string): string {
@@ -323,11 +354,11 @@ export class TerminalSessionStore {
     return value;
   }
 
-  private saveRule(scope: JobRuleScope, value: string): void {
+  private saveRule(scope: JobRuleScope, value: string): boolean {
     const cleanedValue = value.trim().replace(/\s+/g, ' ');
 
     if (!cleanedValue) {
-      return;
+      return false;
     }
 
     const scannerPreferences = this.preferencesRepository.addAdditionalKeyword(scope, cleanedValue);
@@ -342,7 +373,8 @@ export class TerminalSessionStore {
       ruleCatalog: this.createSelectedRuleCatalog(scannerPreferences),
     };
     this.emit();
-    this.trackLog('success', `Saved ${scope} keyword "${cleanedValue}".`);
+    this.trackLog('success', `Saved exclusion keyword "${cleanedValue}".`);
+    return true;
   }
 
   private clearDraft(): void {
@@ -465,10 +497,9 @@ export class TerminalSessionStore {
       forYouEntries: [],
       ruleCatalog,
       jobCounts: {
-        skipped: 0,
-        found: 0,
-        discarded: 0,
-        undetermined: 0,
+        forMe: 0,
+        notApplicable: 0,
+        unknown: 0,
       },
       recentLogs: [],
       spawnActions: [],

@@ -11,6 +11,7 @@ const mockLog = vi.fn();
 const mockInfo = vi.fn();
 const mockWarn = vi.fn();
 const mockError = vi.fn();
+const mockLoggerClose = vi.fn();
 const mockRender = vi.hoisted(() => vi.fn(() => ({
   unmount: vi.fn(),
 })));
@@ -81,6 +82,7 @@ vi.mock('winston', () => ({
     info: mockInfo,
     warn: mockWarn,
     error: mockError,
+    close: mockLoggerClose,
   }),
   format: {
     combine: vi.fn(),
@@ -184,8 +186,8 @@ describe('WinstonAdapter', () => {
     winstonAdapter.setContext({
       phase: 'Session setup',
     });
-    winstonAdapter.countJob('found');
-    winstonAdapter.countJob('undetermined');
+    winstonAdapter.countJob('forMe');
+    winstonAdapter.countJob('unknown');
 
     await expect(winstonAdapter.selectExecutionOptions({ showUnknownJobs: false })).resolves.toEqual({
       showUnknownJobs: false,
@@ -194,8 +196,8 @@ describe('WinstonAdapter', () => {
     const snapshot = (winstonAdapter as any).terminalSessionStore.getSnapshot();
 
     expect(snapshot.context.phase).toBe('Session setup');
-    expect(snapshot.jobCounts.found).toBe(1);
-    expect(snapshot.jobCounts.undetermined).toBe(1);
+    expect(snapshot.jobCounts.forMe).toBe(1);
+    expect(snapshot.jobCounts.unknown).toBe(1);
     expect(snapshot.ruleCatalog.include).toEqual([]);
     expect(snapshot.ruleCatalog.exclude).toEqual([]);
   });
@@ -217,6 +219,32 @@ describe('WinstonAdapter', () => {
     } finally {
       removeWinstonAdapterProcessListeners(interactiveWinstonAdapter);
       resume.mockRestore();
+      restoreProcessTTY();
+    }
+  });
+
+  test('should close terminal session resources', async () => {
+    const restoreProcessTTY = setProcessTTY(true);
+    const pause = vi.spyOn(process.stdin, 'pause').mockReturnValue(process.stdin);
+    const interactiveWinstonAdapter = new WinstonAdapter({
+      ruleManager: createRuleManager(),
+    });
+
+    try {
+      await expect(interactiveWinstonAdapter.selectExecutionOptions({ showUnknownJobs: false })).resolves.toEqual({
+        showUnknownJobs: false,
+      });
+
+      const inkRenderer = mockRender.mock.results[0].value;
+
+      interactiveWinstonAdapter.close();
+
+      expect(inkRenderer.unmount).toHaveBeenCalledOnce();
+      expect(pause).toHaveBeenCalledOnce();
+      expect(mockLoggerClose).toHaveBeenCalledOnce();
+    } finally {
+      removeWinstonAdapterProcessListeners(interactiveWinstonAdapter);
+      pause.mockRestore();
       restoreProcessTTY();
     }
   });

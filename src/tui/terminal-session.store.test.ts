@@ -166,8 +166,8 @@ describe('TerminalSessionStore', () => {
     store.setContext({
       phase: 'Scanning jobs list',
     });
-    store.countJob('found');
-    store.countJob('undetermined');
+    store.countJob('forMe');
+    store.countJob('unknown');
     store.trackLog('info', 'Scanning jobs');
     store.addForYouEntry({
       id: '4386875881',
@@ -182,11 +182,28 @@ describe('TerminalSessionStore', () => {
     const snapshot = store.getSnapshot();
 
     expect(snapshot.context.phase).toBe('Scanning jobs list');
-    expect(snapshot.jobCounts.found).toBe(1);
-    expect(snapshot.jobCounts.undetermined).toBe(1);
+    expect(snapshot.jobCounts.forMe).toBe(1);
+    expect(snapshot.jobCounts.unknown).toBe(1);
     expect(snapshot.recentLogs[0].message).toBe('Scanning jobs');
     expect(snapshot.forYouEntries[0].title).toBe('Angular Developer');
     expect(snapshot.ruleCatalog.include).toEqual([]);
     expect(snapshot.ruleCatalog.exclude).toEqual([]);
+  });
+
+  test('should reclassify counted jobs by id', () => {
+    const store = new TerminalSessionStore(false, {
+      preferencesRepository: createPreferencesRepository(),
+      ruleManager: createRuleManager(),
+    });
+
+    store.countJob('notApplicable', '4386875881');
+    store.countJob('forMe', '4386875881');
+    store.countJob('forMe', '4386875881');
+
+    const snapshot = store.getSnapshot();
+
+    expect(snapshot.jobCounts.notApplicable).toBe(0);
+    expect(snapshot.jobCounts.forMe).toBe(1);
+    expect(snapshot.jobCounts.unknown).toBe(0);
   });
 });

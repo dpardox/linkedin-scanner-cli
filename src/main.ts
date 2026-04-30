@@ -8,22 +8,27 @@ const defaultExecutionOptions: ExecutionOptions = {
 };
 
 void (async function bootstrap(): Promise<void> {
-  const { jobChecker, interaction } = createJobCheckerRuntime();
-  const scannerPreferencesRepository = new ScannerPreferencesFileRepository();
-  const selectedScannerPreferences = await interaction.selectScannerPreferences(scannerPreferencesRepository.read());
-  await interaction.runAction({
-    runningText: 'Saving scanner configuration',
-    successText: 'Saved scanner configuration',
-    failureText: 'Failed to save scanner configuration',
-  }, () => {
-    scannerPreferencesRepository.write(selectedScannerPreferences);
-  });
+  const { jobChecker, interaction, close } = createJobCheckerRuntime();
 
-  const scannerConfig = createScannerConfig(selectedScannerPreferences);
-  const executionOptions = await interaction.selectExecutionOptions({
-    ...defaultExecutionOptions,
-    showUnknownJobs: selectedScannerPreferences.showUnknownJobs,
-  });
+  try {
+    const scannerPreferencesRepository = new ScannerPreferencesFileRepository();
+    const selectedScannerPreferences = await interaction.selectScannerPreferences(scannerPreferencesRepository.read());
+    await interaction.runAction({
+      runningText: 'Saving scanner configuration',
+      successText: 'Saved scanner configuration',
+      failureText: 'Failed to save scanner configuration',
+    }, () => {
+      scannerPreferencesRepository.write(selectedScannerPreferences);
+    });
 
-  await jobChecker.run(scannerConfig, executionOptions);
+    const scannerConfig = createScannerConfig(selectedScannerPreferences);
+    const executionOptions = await interaction.selectExecutionOptions({
+      ...defaultExecutionOptions,
+      showUnknownJobs: selectedScannerPreferences.showUnknownJobs,
+    });
+
+    await jobChecker.run(scannerConfig, executionOptions);
+  } finally {
+    close();
+  }
 })();

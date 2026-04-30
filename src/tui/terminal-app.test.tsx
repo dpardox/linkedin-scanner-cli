@@ -11,7 +11,6 @@ import { TerminalSessionStore } from '@tui/terminal-session.store';
 
 const mountedApplications: Array<{ unmount: () => void }> = [];
 const temporaryDirectories: string[] = [];
-const chartBarCharacter = String.fromCharCode(0x2588);
 
 function createRuleManager(): PersistedJobRuleManager {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'manual-review-ui-'));
@@ -61,19 +60,18 @@ describe('InkTerminalApp', () => {
 
     expect(frame).toContain('LinkedIn scanner is running.');
     expect(frame).toContain('Session');
-    expect(frame).toContain('include 0 | exclude 0 | extra exclude 0');
+    expect(frame).toMatch(/include rules 0 \| exclusion rules 0\s+\|?\s*custom exclusions 0/);
     expect(frame).toContain('Jobs');
-    expect(frame).toContain('No jobs yet');
-    expect(frame).toContain('Found     0');
-    expect(frame).toContain('Unknown   0');
-    expect(frame).toContain('Discarded 0');
-    expect(frame).toContain('Skipped   0');
-    expect(frame).not.toContain('found 0 | unknown 0 | discarded 0 | skipped 0');
+    expect(frame).toMatch(/Good fit\s+0/);
+    expect(frame).toMatch(/Not a fit\s+0/);
+    expect(frame).toMatch(/Unknown\s+0/);
+    expect(frame).not.toContain('Discarded');
+    expect(frame).not.toContain('Skipped');
     expect(frame).not.toContain('Rule catalog');
     expect(frame).not.toContain('Shortlist');
     expect(frame).not.toContain('Review queue');
-    expect(frame).toContain('exclude:');
-    expect(frame).toContain('|');
+    expect(frame).toContain('Exclude jobs containing:');
+    expect(frame).toContain('keyword or phrase');
     expect(frame.indexOf('Session')).toBeLessThan(frame.indexOf('Recent activity'));
   });
 
@@ -86,14 +84,20 @@ describe('InkTerminalApp', () => {
 
     mountedApplications.push(application);
 
-    application.stdin.write('typescript');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    for (const character of 'typescript') {
+      application.stdin.write(character);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+
     application.stdin.write('\r');
 
     await Promise.resolve();
 
     expect(store.getSnapshot().ruleCatalog.exclude).toEqual([]);
     expect(store.getSnapshot().additionalKeywords.exclude).toEqual(['typescript']);
-    expect(application.lastFrame()).toContain('Saved exclude keyword "typescript".');
+    expect(application.lastFrame()).toContain('Saved exclusion keyword "typescript".');
   });
 
   test('should render the manual review view and the session summary', async () => {
@@ -119,9 +123,9 @@ describe('InkTerminalApp', () => {
       classification: 'unknown',
       defaultRuleScope: 'exclude',
     });
-    store.countJob('undetermined');
+    store.countJob('unknown');
     for (let i = 0; i < 100; i += 1) {
-      store.countJob('skipped');
+      store.countJob('notApplicable');
     }
     const application = render(<InkTerminalApp store={store} />);
 
@@ -135,14 +139,16 @@ describe('InkTerminalApp', () => {
     expect(frame).toContain('Link: https://www.linkedin.com/jobs/view/4386875881/');
     expect(frame).toContain('Session');
     expect(frame).toContain('Jobs');
-    expect(frame).toContain(chartBarCharacter);
-    expect(frame).toContain('Unknown   1');
-    expect(frame).toContain('Skipped   100');
+    expect(frame).toMatch(/Good fit\s+0/);
+    expect(frame).toMatch(/Unknown\s+1/);
+    expect(frame).toMatch(/Not a fit\s+100/);
+    expect(frame).not.toContain('Discarded');
+    expect(frame).not.toContain('Skipped');
     expect(frame).not.toContain('Rule catalog');
     expect(frame).not.toContain('Shortlist');
     expect(frame).not.toContain('Review queue');
-    expect(frame).toContain('exclude:');
-    expect(frame).toContain('|');
+    expect(frame).toContain('Exclude jobs containing:');
+    expect(frame).toContain('keyword or phrase');
     expect(frame.indexOf('Session')).toBeLessThan(frame.indexOf('Recent activity'));
 
     store.handleInput('typescript', {});
@@ -152,8 +158,8 @@ describe('InkTerminalApp', () => {
 
     const updatedFrame = application.lastFrame() ?? '';
 
-    expect(updatedFrame).toContain('Saved exclude keyword "typescript".');
-    expect(updatedFrame).toContain('include 0 | exclude 0 | extra exclude 1');
+    expect(updatedFrame).toContain('Saved exclusion keyword "typescript".');
+    expect(updatedFrame).toMatch(/include rules 0 \| exclusion rules 0\s+\|?\s*custom exclusions 1/);
     expect(updatedFrame).toContain('typescript');
 
     store.finishManualReview('4386875881');

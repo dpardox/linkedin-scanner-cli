@@ -14,4 +14,5 @@ export interface InteractionPort {
   runAction<T>(labels: InteractionActionLabels, action: () => Promise<T> | T): Promise<T>;
   startManualReview(review: ManualReviewEntry): void;
   finishManualReview(jobId: string): void;
+  close?(): void;
 }

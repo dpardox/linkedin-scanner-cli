@@ -25,4 +25,8 @@ export class NullInteractionAdapter implements InteractionPort {
     return;
   }
 
+  public close(): void {
+    return;
+  }
+
 }

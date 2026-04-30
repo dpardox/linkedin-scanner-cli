@@ -1,13 +1,11 @@
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Box, Text, useInput, type Key } from 'ink';
-import { StackedBarChart, type StackedBarSegment } from '@pppp606/ink-chart';
+import { TextInput } from '@inkjs/ui';
 import Link from 'ink-link';
 import { Spawn } from 'ink-spawn';
 import { JobCounter, LoggerContext } from '@ports/logger.port';
 import {
-  TerminalInputKey,
   TerminalLogEntry,
-  TerminalRuleDraft,
   TerminalSessionSnapshot,
   TerminalSpawnAction,
   TerminalSessionStore,
@@ -22,23 +20,25 @@ type SessionSummaryRow = {
   value: string;
 };
 
-type JobStatsChartRow = {
+type JobStatsCounterRow = {
   counter: JobCounter;
   label: string;
   color: string;
 };
 
+type JobStatsCounterEntry = JobStatsCounterRow & {
+  value: number;
+};
+
 const actionStatusPollIntervalMs = 50;
 const actionStatusTimeoutMs = 30000;
-const jobStatsChartWidth = 32;
-const jobStatsLegendLabelWidth = 10;
-const sessionDashboardChartGap = 4;
+const jobStatsCounterLabelWidth = 9;
+const sessionDashboardCountersGap = 4;
 
-const jobStatsChartRows: JobStatsChartRow[] = [
-  { counter: 'found', label: 'Found', color: 'green' },
-  { counter: 'undetermined', label: 'Unknown', color: 'yellow' },
-  { counter: 'discarded', label: 'Discarded', color: 'red' },
-  { counter: 'skipped', label: 'Skipped', color: 'cyan' },
+const jobStatsCounterRows: JobStatsCounterRow[] = [
+  { counter: 'forMe', label: 'Good fit', color: '#4ade80' },
+  { counter: 'notApplicable', label: 'Not a fit', color: 'red' },
+  { counter: 'unknown', label: 'Unknown', color: 'yellow' },
 ];
 
 export function InkTerminalApp({ store }: InkTerminalAppProps): React.JSX.Element {
@@ -46,7 +46,7 @@ export function InkTerminalApp({ store }: InkTerminalAppProps): React.JSX.Elemen
   const now = useNowTicker(snapshot.startedAt);
 
   useInput((input, key) => {
-    handleTerminalInput(store, input, key);
+    handleTerminalInput(input, key);
   });
 
   return (
@@ -55,7 +55,7 @@ export function InkTerminalApp({ store }: InkTerminalAppProps): React.JSX.Elemen
       <Box flexGrow={1} flexShrink={1} flexDirection="column" paddingX={2} paddingY={1}>
         <PrimaryContent snapshot={snapshot} />
       </Box>
-      <TerminalFooter snapshot={snapshot} />
+      <TerminalFooter snapshot={snapshot} store={store} />
     </Box>
   );
 }
@@ -146,8 +146,8 @@ function SessionDashboard({ snapshot }: { snapshot: TerminalSessionSnapshot }): 
       <Box flexGrow={1} flexShrink={1}>
         <SessionSummary snapshot={snapshot} />
       </Box>
-      <Box marginLeft={sessionDashboardChartGap} flexShrink={0}>
-        <JobStatsChart snapshot={snapshot} />
+      <Box marginLeft={sessionDashboardCountersGap} flexShrink={0}>
+        <JobStatsCounters snapshot={snapshot} />
       </Box>
     </Box>
   );
@@ -177,73 +177,35 @@ function SessionSummaryItem({ row }: { row: SessionSummaryRow }): React.JSX.Elem
   );
 }
 
-function JobStatsChart({ snapshot }: { snapshot: TerminalSessionSnapshot }): React.JSX.Element {
-  const data = createJobStatsChartData(snapshot);
-  const total = calculateJobStatsTotal(snapshot);
-  const max = calculateJobStatsChartMax(total, data.length);
+function JobStatsCounters({ snapshot }: { snapshot: TerminalSessionSnapshot }): React.JSX.Element {
+  const data = createJobStatsCounterData(snapshot);
 
   return (
     <Box flexDirection="column">
       <Text bold>Jobs</Text>
       <Box marginTop={1} flexDirection="column">
-        {data.length ? (
-          <StackedBarChart
-            data={data}
-            mode="absolute"
-            max={max}
-            width={jobStatsChartWidth}
-            showLabels={false}
-            showValues={false}
-          />
-        ) : (
-          <Text dimColor>No jobs yet</Text>
-        )}
-        <JobStatsLegend snapshot={snapshot} />
+        {data.map((entry) => (
+          <JobStatsCounterEntryRow key={entry.counter} entry={entry} />
+        ))}
       </Box>
     </Box>
   );
 }
 
-function createJobStatsChartData(snapshot: TerminalSessionSnapshot): StackedBarSegment[] {
-  return jobStatsChartRows
-    .map((row) => ({
-      label: row.label,
-      value: snapshot.jobCounts[row.counter],
-      color: row.color,
-    }))
-    .filter((segment) => segment.value > 0);
+function createJobStatsCounterData(snapshot: TerminalSessionSnapshot): JobStatsCounterEntry[] {
+  return jobStatsCounterRows.map((row) => ({
+    ...row,
+    value: snapshot.jobCounts[row.counter],
+  }));
 }
 
-function calculateJobStatsTotal(snapshot: TerminalSessionSnapshot): number {
-  return jobStatsChartRows.reduce((total, row) => total + snapshot.jobCounts[row.counter], 0);
-}
-
-function calculateJobStatsChartMax(total: number, positiveSegmentCount: number): number {
-  if (positiveSegmentCount === 0) {
-    return 1;
-  }
-
-  const availableProportionalWidth = jobStatsChartWidth - positiveSegmentCount;
-  return Math.ceil((total * jobStatsChartWidth) / availableProportionalWidth);
-}
-
-function JobStatsLegend({ snapshot }: { snapshot: TerminalSessionSnapshot }): React.JSX.Element {
-  return (
-    <Box marginTop={1} flexDirection="column">
-      {jobStatsChartRows.map((row) => (
-        <JobStatsLegendItem key={row.counter} count={snapshot.jobCounts[row.counter]} row={row} />
-      ))}
-    </Box>
-  );
-}
-
-function JobStatsLegendItem({ count, row }: { count: number; row: JobStatsChartRow }): React.JSX.Element {
+function JobStatsCounterEntryRow({ entry }: { entry: JobStatsCounterEntry }): React.JSX.Element {
   return (
     <Box>
-      <Box width={jobStatsLegendLabelWidth}>
-        <Text color={row.color}>{row.label}</Text>
+      <Box width={jobStatsCounterLabelWidth} marginRight={1}>
+        <Text color={entry.color}>{entry.label}</Text>
       </Box>
-      <Text>{count}</Text>
+      <Text color={entry.color}>{entry.value}</Text>
     </Box>
   );
 }
@@ -321,11 +283,26 @@ function createActionStatusWaiterArgs(statusFilePath: string): string[] {
   ];
 }
 
-function TerminalFooter({ snapshot }: { snapshot: TerminalSessionSnapshot }): React.JSX.Element {
+function TerminalFooter({ snapshot, store }: { snapshot: TerminalSessionSnapshot; store: TerminalSessionStore }): React.JSX.Element {
+  const [inputResetKey, setInputResetKey] = useState(0);
+
+  const saveExcludeKeyword = (value: string) => {
+    const saved = store.saveExcludeKeyword(value);
+
+    if (saved) {
+      setInputResetKey((resetKey) => resetKey + 1);
+    }
+  };
+
   return (
     <Box paddingX={1} height={1} flexShrink={0} width="100%" backgroundColor="#111827">
-      <Text bold color="#d1d5db">exclude: </Text>
-      {renderDraftValue(snapshot.excludeDraft)}
+      <Text bold color="#d1d5db">Exclude jobs containing: </Text>
+      <TextInput
+        key={inputResetKey}
+        defaultValue={snapshot.excludeDraft.value}
+        placeholder="keyword or phrase"
+        onSubmit={saveExcludeKeyword}
+      />
     </Box>
   );
 }
@@ -350,25 +327,12 @@ function buildSessionSummaryRows(snapshot: TerminalSessionSnapshot): SessionSumm
     { label: 'Search', value: snapshot.context.searchQuery ?? '-' },
     { label: 'Location', value: String(snapshot.context.location ?? '-') },
     { label: 'Current job', value: snapshot.context.jobId ?? '-' },
-    { label: 'Rules', value: `include ${snapshot.ruleCatalog.include.length} | exclude ${snapshot.ruleCatalog.exclude.length} | extra exclude ${snapshot.additionalKeywords.exclude.length}` },
+    { label: 'Rules', value: `include rules ${snapshot.ruleCatalog.include.length} | exclusion rules ${snapshot.ruleCatalog.exclude.length} | custom exclusions ${snapshot.additionalKeywords.exclude.length}` },
   ];
 }
 
 function buildHeaderModeLabel(context: LoggerContext): string {
   return context.runMode === 'manual-review' ? 'manual review' : 'scan';
-}
-
-function renderDraftValue(draft: TerminalRuleDraft): React.JSX.Element {
-  const beforeCursor = draft.value.slice(0, draft.cursorOffset);
-  const afterCursor = draft.value.slice(draft.cursorOffset);
-
-  return (
-    <Text>
-      <Text color="#9ca3af">{beforeCursor}</Text>
-      <Text color="#e5e7eb">|</Text>
-      <Text color="#9ca3af">{afterCursor}</Text>
-    </Text>
-  );
 }
 
 function getActivityBadge(level: TerminalLogEntry['level']): string {
@@ -403,30 +367,11 @@ function getActivityColor(level: TerminalLogEntry['level']): 'blue' | 'green' | 
   return 'blue';
 }
 
-function handleTerminalInput(store: TerminalSessionStore, input: string, key: Key): void {
+function handleTerminalInput(input: string, key: Key): void {
   if (key.ctrl && input === 'c') {
     process.kill(process.pid, 'SIGINT');
     return;
   }
-
-  store.handleInput(input, toTerminalInputKey(key));
-}
-
-function toTerminalInputKey(key: Key): TerminalInputKey {
-  return {
-    ctrl: key.ctrl,
-    downArrow: key.downArrow,
-    leftArrow: key.leftArrow,
-    return: key.return,
-    rightArrow: key.rightArrow,
-    tab: key.tab,
-    upArrow: key.upArrow,
-    escape: key.escape,
-    backspace: key.backspace,
-    delete: key.delete,
-    home: key.home,
-    end: key.end,
-  };
 }
 
 function useNowTicker(startedAt: Date): Date {

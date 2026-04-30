@@ -65,5 +65,5 @@ Run `npm start` to launch the scanner.
 - The use of method `waitForTimeout` is for preventing the browser overload and simulate human behavior.
 - for you reemplaza el recent activity temporalmente
 - Unknown jobs now go through the same manual review flow as any other shortlist hit. The scanner waits for you to dismiss them in LinkedIn before continuing.
-- The TUI shows a rule input during manual review. Use it to save future exclude rules into `keywords/`.
-- The rule input supports plain text with `Enter`, `/exclude term`, and `exclude: term`.
+- The TUI shows an exclusion keyword input during manual review. Use it to save terms that should discard future jobs into `keywords/`.
+- The exclusion keyword input supports plain text with `Enter`, `/exclude term`, and `exclude: term`.

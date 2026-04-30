@@ -219,6 +219,44 @@ describe('JobCheckerApp', () => {
     expect(jobsSearchPage.nextPage).not.toHaveBeenCalled();
   });
 
+  test('should not count skipped jobs as counter entries', async () => {
+    const logger = createLogger();
+    const jobRepository = {
+      findById: vi.fn(async (jobId: string) => {
+        if (jobId === 'processed') {
+          return new JobModel({
+            id: jobId,
+            status: JobStatus.dissmissed,
+          });
+        }
+
+        return null;
+      }),
+    };
+
+    const app = new JobCheckerApp(
+      logger,
+      createInteraction() as any,
+      { notify: vi.fn() } as any,
+      {} as any,
+      {} as any,
+      jobRepository as any,
+    );
+
+    const jobsSearchPage = {
+      getJobIds: vi.fn().mockResolvedValue(['processed', 'empty', 'new']),
+      isEmptyJob: vi.fn(async (jobId: string) => jobId === 'empty'),
+      markJobAsSeen: vi.fn().mockResolvedValue(undefined),
+    };
+
+    (app as any).jobsSearchPage = jobsSearchPage;
+
+    await expect((app as any).getJobIds()).resolves.toEqual(['new']);
+
+    expect(jobsSearchPage.markJobAsSeen).toHaveBeenCalledWith('processed');
+    expect(logger.countJob).not.toHaveBeenCalled();
+  });
+
   test('should continue processing jobs after a single job failure', async () => {
     const logger = createLogger();
 
@@ -355,6 +393,42 @@ describe('JobCheckerApp', () => {
     });
   });
 
+  test('should count include matches as for me counter entries', async () => {
+    const logger = createLogger();
+    const interaction = createInteraction();
+
+    const app = new JobCheckerApp(
+      logger,
+      interaction as any,
+      { notify: vi.fn() } as any,
+      {} as any,
+      { detect: vi.fn().mockReturnValue('eng') } as any,
+      {} as any,
+    );
+
+    vi.spyOn(app as any, 'getJobDetails').mockResolvedValue(new JobModel({
+      id: '4386875881',
+      title: 'Angular Developer',
+      description: 'Angular and TypeScript role',
+      location: 'Remote',
+    }));
+    vi.spyOn(app as any, 'isDissmissedJob').mockResolvedValue(false);
+    vi.spyOn(app as any, 'isAppliedJob').mockResolvedValue(false);
+    vi.spyOn(app as any, 'hasValidLanguage').mockResolvedValue(true);
+    vi.spyOn(app as any, 'markForManualCheck').mockResolvedValue(undefined);
+
+    await (app as any).checkJob('4386875881', {
+      restrictedLocations: [],
+      keywords: {
+        include: ['Angular'],
+        exclude: [],
+      },
+    }, executionOptions);
+
+    expect(logger.countJob).toHaveBeenCalledTimes(1);
+    expect(logger.countJob).toHaveBeenCalledWith('forMe', '4386875881');
+  });
+
   test('should discard jobs with exclude matches without sending them to unknown review', async () => {
     const logger = createLogger();
     const interaction = createInteraction();
@@ -397,6 +471,7 @@ describe('JobCheckerApp', () => {
     });
     expect(markForManualCheck).not.toHaveBeenCalled();
     expect(markUndeterminedJobForManualCheck).not.toHaveBeenCalled();
+    expect(logger.countJob).toHaveBeenCalledWith('notApplicable', '4386875881');
     expect(logger.error).toHaveBeenCalledWith('Job "%s" has exclude words: %O', '4386875881', ['PHP']);
   });
 
@@ -441,7 +516,8 @@ describe('JobCheckerApp', () => {
     expect(jobRepository.update).toHaveBeenCalledWith('4386875881', {
       status: JobStatus.undetermined,
     });
-    expect(logger.countJob).toHaveBeenCalledWith('undetermined');
+    expect(logger.countJob).toHaveBeenCalledWith('unknown', '4386875881');
+    expect(logger.countJob).not.toHaveBeenCalledWith('forMe', '4386875881');
     expect(logger.forYou).not.toHaveBeenCalled();
     expect(logger.trackUndetermined).not.toHaveBeenCalled();
     expect(interaction.startManualReview).not.toHaveBeenCalled();
@@ -499,6 +575,7 @@ describe('JobCheckerApp', () => {
     expect(jobRepository.update).toHaveBeenCalledWith('4386875881', {
       status: JobStatus.dissmissed,
     });
+    expect(logger.countJob).toHaveBeenCalledWith('unknown', '4386875881');
     expect(interaction.startManualReview).toHaveBeenCalledWith({
       id: '4386875881',
       title: 'Programador full stack',
@@ -512,6 +589,49 @@ describe('JobCheckerApp', () => {
     });
     expect(interaction.finishManualReview).toHaveBeenCalledWith('4386875881');
     expect(logger.success).toHaveBeenCalledWith('Job "%s" reviewed!', 'Programador full stack');
+  });
+
+  test('should reclassify jobs when manual review uses a newer classification', async () => {
+    const logger = createLogger();
+    const interaction = createInteraction();
+
+    const jobRepository = {
+      update: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const app = new JobCheckerApp(
+      logger,
+      interaction as any,
+      { notify: vi.fn() } as any,
+      {} as any,
+      {} as any,
+      jobRepository as any,
+    );
+
+    (app as any).jobsSearchPage = {
+      markJobForReview: vi.fn().mockResolvedValue(undefined),
+      waitForJobToBeDismissed: vi.fn().mockResolvedValue(undefined),
+    };
+
+    (app as any).countJob('4386875881', 'notApplicable');
+
+    await (app as any).markForManualCheck({
+      id: '4386875881',
+      title: 'Angular Developer',
+    }, {
+      id: '4386875881',
+      title: 'Angular Developer',
+      link: 'https://www.linkedin.com/jobs/view/4386875881/',
+      location: 'Remote',
+      emails: [],
+      language: 'eng',
+      criteria: ['Angular'],
+      classification: 'include',
+      defaultRuleScope: 'include',
+    });
+
+    expect(logger.countJob).toHaveBeenNthCalledWith(1, 'notApplicable', '4386875881');
+    expect(logger.countJob).toHaveBeenNthCalledWith(2, 'forMe', '4386875881');
   });
 
   test('should treat undetermined jobs like manual review matches', async () => {
@@ -564,6 +684,9 @@ describe('JobCheckerApp', () => {
       language: 'spa',
       criteria: ['Unknown'],
     });
+    expect(logger.countJob).toHaveBeenCalledTimes(1);
+    expect(logger.countJob).toHaveBeenCalledWith('unknown', '4386875881');
+    expect(logger.countJob).not.toHaveBeenCalledWith('forMe', '4386875881');
     expect((app as any).jobsSearchPage.markJobForReview).toHaveBeenCalledWith('4386875881');
     expect((app as any).jobsSearchPage.waitForJobToBeDismissed).toHaveBeenCalledWith('4386875881');
     expect(interaction.startManualReview).toHaveBeenCalledWith({

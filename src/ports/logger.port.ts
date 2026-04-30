@@ -8,7 +8,7 @@ export type LoggerContext = {
   jobId?: string;
 };
 
-export type JobCounter = 'skipped' | 'found' | 'discarded' | 'undetermined';
+export type JobCounter = 'forMe' | 'notApplicable' | 'unknown';
 
 export type ForYouEntry = {
   id: string;
@@ -22,7 +22,7 @@ export type ForYouEntry = {
 
 export interface LoggerPort {
   setContext(context: Partial<LoggerContext>): void;
-  countJob?(counter: JobCounter): void;
+  countJob?(counter: JobCounter, jobId?: string): void;
   info(...args: unknown[]): void;
   warn(...args: unknown[]): void;
   success(...args: unknown[]): void;
@@ -30,4 +30,5 @@ export interface LoggerPort {
   forYou(entry: ForYouEntry): void;
   trackUndetermined?(entry: UndeterminedQueueEntry): void;
   br(): void;
+  close?(): void;
 }

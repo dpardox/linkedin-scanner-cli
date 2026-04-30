@@ -95,8 +95,8 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
     this.terminalSessionStore.setContext(context);
   }
 
-  public countJob(counter: JobCounter): void {
-    this.terminalSessionStore.countJob(counter);
+  public countJob(counter: JobCounter, jobId?: string): void {
+    this.terminalSessionStore.countJob(counter, jobId);
   }
 
   public info(message: string, ...args: unknown[]): void {
@@ -179,6 +179,13 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
 
   public finishManualReview(jobId: string): void {
     this.terminalSessionStore.finishManualReview(jobId);
+  }
+
+  public close(): void {
+    this.restoreTerminal();
+    this.pauseInputForInkRenderer();
+    this.closeLogger();
+    this.removeProcessListeners();
   }
 
   private createWinstonLogger(): Logger {
@@ -490,8 +497,29 @@ export class WinstonAdapter implements LoggerPort, InteractionPort {
     this.inkRenderer = undefined;
   };
 
+  private pauseInputForInkRenderer(): void {
+    if (!this.interactiveInput) {
+      return;
+    }
+
+    process.stdin.pause();
+  }
+
+  private closeLogger(): void {
+    this.logger.close?.();
+  }
+
+  private removeProcessListeners(): void {
+    if (!this.interactive) {
+      return;
+    }
+
+    process.removeListener('exit', this.restoreTerminal);
+    process.removeListener('SIGINT', this.handleInterrupt);
+  }
+
   private readonly handleInterrupt = (): void => {
-    this.restoreTerminal();
+    this.close();
     process.exit(130);
   };
 

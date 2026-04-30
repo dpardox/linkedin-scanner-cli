@@ -24,6 +24,12 @@ export type JobCheckerAppDependencies = {
 
 export type JobCheckerAppOverrides = Partial<JobCheckerAppDependencies>;
 
+export type JobCheckerRuntime = {
+  jobChecker: JobCheckerApp;
+  interaction: InteractionPort;
+  close(): void;
+};
+
 function resolveDependencies(overrides: JobCheckerAppOverrides = {}): JobCheckerAppDependencies {
   const persistedJobRuleManager = new PersistedJobRuleManager();
   const sharedTerminalAdapter = !overrides.logger && !overrides.interaction
@@ -47,10 +53,7 @@ function resolveDependencies(overrides: JobCheckerAppOverrides = {}): JobChecker
   };
 }
 
-export function createJobCheckerRuntime(overrides: JobCheckerAppOverrides = {}): {
-  jobChecker: JobCheckerApp;
-  interaction: InteractionPort;
-} {
+export function createJobCheckerRuntime(overrides: JobCheckerAppOverrides = {}): JobCheckerRuntime {
   const dependencies = resolveDependencies(overrides);
 
   const jobChecker = new JobCheckerApp(
@@ -65,7 +68,19 @@ export function createJobCheckerRuntime(overrides: JobCheckerAppOverrides = {}):
   return {
     jobChecker,
     interaction: dependencies.interaction,
+    close: () => closeRuntime(dependencies),
   };
+}
+
+function closeRuntime(dependencies: JobCheckerAppDependencies): void {
+  const closeableDependencies = new Set([
+    dependencies.logger,
+    dependencies.interaction,
+  ]);
+
+  closeableDependencies.forEach((dependency) => {
+    dependency.close?.();
+  });
 }
 
 export function createJobCheckerApp(overrides: JobCheckerAppOverrides = {}): JobCheckerApp {
