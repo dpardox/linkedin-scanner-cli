@@ -60,6 +60,7 @@ describe('InkTerminalApp', () => {
     const frame = application.lastFrame() ?? '';
 
     expect(frame).toContain('LinkedIn scanner is running.');
+    expect(frame).toContain('LinkedIn Scanner CLI');
     expect(frame).toContain('Session');
     expect(frame).toMatch(/include rules 0 \| exclusion rules 0\s+\|?\s*custom exclusions 0/);
     expect(frame).toContain('Jobs');

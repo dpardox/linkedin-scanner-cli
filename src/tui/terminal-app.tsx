@@ -64,7 +64,7 @@ function TerminalHeader({ context, elapsedTimeLabel }: { context: LoggerContext;
   return (
     <Box flexDirection="column">
       <Box justifyContent="space-between" paddingX={1}>
-        <Text inverse bold> linkedin-scanner-cli </Text>
+        <Text inverse bold> LinkedIn Scanner CLI </Text>
         <Text inverse>{buildHeaderModeLabel(context)}</Text>
       </Box>
       <Box justifyContent="space-between" paddingX={1}>
