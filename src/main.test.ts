@@ -6,7 +6,6 @@ const mocks = vi.hoisted(() => {
     strictSearchMode: false,
     locationKeys: ['colombia'],
     languages: ['spa'],
-    restrictedLocations: [],
     filters: {
       workType: '2',
       easyApply: true,

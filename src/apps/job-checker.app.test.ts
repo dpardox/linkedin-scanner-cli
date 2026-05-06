@@ -58,7 +58,6 @@ describe('JobCheckerApp', () => {
       {
         query: 'angular',
         locations: [ '92000000' as any ],
-        restrictedLocations: [],
         filters: {
           easyApply: true,
         },
@@ -92,7 +91,6 @@ describe('JobCheckerApp', () => {
       {
         query: 'angular',
         locations: [ '92000000' as any ],
-        restrictedLocations: [],
         filters: {
           timePostedRange: TimePostedRange.week,
           workType: WorkType.remote,
@@ -380,7 +378,6 @@ describe('JobCheckerApp', () => {
       location: 'Remote',
       highSkillsMatch: true,
     }), {
-      restrictedLocations: [],
       keywords: {
         include: ['Angular', 'React'],
         exclude: [],
@@ -418,7 +415,6 @@ describe('JobCheckerApp', () => {
     vi.spyOn(app as any, 'markForManualCheck').mockResolvedValue(undefined);
 
     await (app as any).checkJob('4386875881', {
-      restrictedLocations: [],
       keywords: {
         include: ['Angular'],
         exclude: [],
@@ -464,7 +460,6 @@ describe('JobCheckerApp', () => {
     const markUndeterminedJobForManualCheck = vi.spyOn(app as any, 'markUndeterminedJobForManualCheck').mockResolvedValue(undefined);
 
     await (app as any).checkJob('4386875881', {
-      restrictedLocations: [],
       keywords: {
         include: ['Angular'],
         exclude: ['PHP'],
@@ -515,7 +510,6 @@ describe('JobCheckerApp', () => {
     vi.spyOn(app as any, 'hasValidLanguage').mockResolvedValue(true);
 
     await (app as any).checkJob('4386875881', {
-      restrictedLocations: [],
       keywords: {
         include: ['Angular'],
         exclude: ['PHP'],

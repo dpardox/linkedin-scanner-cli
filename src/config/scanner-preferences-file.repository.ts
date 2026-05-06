@@ -23,10 +23,6 @@ type LanguageRecord = {
   code: string;
 };
 
-type RestrictedLocationRecord = {
-  location: string;
-};
-
 type RuleSelectionRecord = {
   scope: JobRuleScope;
   ruleId: string;
@@ -53,7 +49,6 @@ type ScannerPreferencesFiles = {
   searchQueries: string;
   locations: string;
   languages: string;
-  restrictedLocations: string;
   ruleSelections: string;
   additionalKeywords: string;
   filters: string;
@@ -98,7 +93,6 @@ export class ScannerPreferencesFileRepository {
     this.writeJsonLines(this.files.searchQueries, searchQueryRecords);
     this.writeJsonLines(this.files.locations, preferences.locationKeys.map((key) => ({ key })));
     this.writeJsonLines(this.files.languages, preferences.languages.map((code) => ({ code })));
-    this.writeJsonLines(this.files.restrictedLocations, preferences.restrictedLocations.map((location) => ({ location })));
     this.writeJsonLines(this.files.ruleSelections, this.createRuleSelectionRecords(preferences));
     this.writeJsonLines(this.files.additionalKeywords, this.createAdditionalKeywordRecords(preferences));
     this.writeJson(this.files.filters, preferences.filters);
@@ -135,7 +129,6 @@ export class ScannerPreferencesFileRepository {
       strictSearchMode: searchOptions.strictSearchMode,
       locationKeys: this.readJsonLines<LocationRecord>(this.files.locations).map(({ key }) => key),
       languages: this.readJsonLines<LanguageRecord>(this.files.languages).map(({ code }) => code),
-      restrictedLocations: this.readJsonLines<RestrictedLocationRecord>(this.files.restrictedLocations).map(({ location }) => location),
       filters: this.readJson<ScannerPreferences['filters']>(this.files.filters, {}),
       includeRuleIds: this.getRuleSelectionValues(ruleSelections, 'include'),
       excludeRuleIds: this.getRuleSelectionValues(ruleSelections, 'exclude'),
@@ -256,17 +249,21 @@ export class ScannerPreferencesFileRepository {
   }
 
   private mergePreferences(preferences: Partial<ScannerPreferences>): ScannerPreferences {
-    const definedPreferences = Object.fromEntries(
-      Object.entries(preferences).filter(([, value]) => value !== undefined),
-    ) as Partial<ScannerPreferences>;
-
     return {
-      ...defaultScannerPreferences,
-      ...definedPreferences,
+      searchQueries: preferences.searchQueries ?? defaultScannerPreferences.searchQueries,
+      strictSearchMode: preferences.strictSearchMode ?? defaultScannerPreferences.strictSearchMode,
+      locationKeys: preferences.locationKeys ?? defaultScannerPreferences.locationKeys,
+      languages: preferences.languages ?? defaultScannerPreferences.languages,
       filters: {
         ...defaultScannerPreferences.filters,
-        ...definedPreferences.filters,
+        ...preferences.filters,
       },
+      includeRuleIds: preferences.includeRuleIds ?? defaultScannerPreferences.includeRuleIds,
+      excludeRuleIds: preferences.excludeRuleIds ?? defaultScannerPreferences.excludeRuleIds,
+      includeKeywords: preferences.includeKeywords ?? defaultScannerPreferences.includeKeywords,
+      excludeKeywords: preferences.excludeKeywords ?? defaultScannerPreferences.excludeKeywords,
+      contentSearchQuery: preferences.contentSearchQuery ?? defaultScannerPreferences.contentSearchQuery,
+      showUnknownJobs: preferences.showUnknownJobs ?? defaultScannerPreferences.showUnknownJobs,
     };
   }
 
@@ -275,7 +272,6 @@ export class ScannerPreferencesFileRepository {
       searchQueries: path.join(this.directoryPath, 'search-queries.jsonl'),
       locations: path.join(this.directoryPath, 'locations.jsonl'),
       languages: path.join(this.directoryPath, 'languages.jsonl'),
-      restrictedLocations: path.join(this.directoryPath, 'restricted-locations.jsonl'),
       ruleSelections: path.join(this.directoryPath, 'rule-selections.jsonl'),
       additionalKeywords: path.join(this.directoryPath, 'additional-keywords.jsonl'),
       filters: path.join(this.directoryPath, 'search-filters.json'),

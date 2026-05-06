@@ -12,7 +12,9 @@ describe('defaultPersistedJobRules', () => {
     expect(rulesById.get('java')?.kind).toBe('keyword');
     expect(rulesById.get('react')?.kind).toBe('keyword');
     expect(rulesById.get('aws')?.kind).toBe('keyword');
+    expect(rulesById.get('spain-citizenship')?.kind).toBe('term');
     expect(rulesById.get('us-citizenship')?.kind).toBe('term');
+    expect(rulesById.get('spain-citizenship')?.terms).toContain('Residencia en España');
     expect(rulesById.get('us-citizenship')?.terms).toContain('MUST BE A US CITIZEN');
   });
 

@@ -8,7 +8,6 @@ export type ScannerPreferences = {
   strictSearchMode: boolean;
   locationKeys: LocationKey[];
   languages: string[];
-  restrictedLocations: string[];
   filters: {
     workType?: WorkType;
     easyApply?: boolean;

@@ -6,7 +6,6 @@ import { InteractionPort } from '@ports/interaction.port';
 import { NotifierPort } from '@ports/notifier.port';
 import { CountedJob, JobCounter, LoggerPort } from '@ports/logger.port';
 import { JobStatus } from '@enums/job-status.enum';
-import { normalize } from '@utils/normalize.util';
 import { ExpandedJobSearchConfig, JobSearchConfig } from '@shared/types/job-search-config.type';
 import { ExecutionOptions } from '@shared/types/execution-options.type';
 import { Filters } from '@shared/types/filters.type';
@@ -402,13 +401,6 @@ export class JobCheckerApp {
       };
     }
 
-    if (await this.jobHasRestrictedLocations(job, config.restrictedLocations)) {
-      return {
-        classification: 'exclude',
-        criteria: [],
-      };
-    }
-
     const excludeMatches = this.getMatchingKeywords(job.fullDescription, config.keywords.exclude);
 
     if (excludeMatches.length) {
@@ -438,19 +430,6 @@ export class JobCheckerApp {
     if (job.isClosed) {
       this.countJob(job, 'notApplicable', { reason: 'Closed job post' });
       this.logger.error('Job "%s" is closed!', job.title);
-      await this.skipJob(job);
-      return true;
-    }
-    return false;
-  }
-
-  private async jobHasRestrictedLocations(job: JobModel, restrictedLocations: string[] = []): Promise<boolean> {
-    const location = normalize(job.location);
-    const hasRestrictedLocations = restrictedLocations.some(x => location?.includes(normalize(x)));
-
-    if (hasRestrictedLocations) {
-      this.countJob(job, 'notApplicable', { reason: `Restricted location: ${job.location}` });
-      this.logger.error('Job "%s" has restricted location: %s', job.title, job.location);
       await this.skipJob(job);
       return true;
     }

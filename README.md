@@ -42,7 +42,7 @@ In option lists, use arrows to move, Space to select or unselect, and Enter to c
 
 Matching rules live in `keywords/`, with one JSON file per keyword package. The setup menu shows those keyword packages and can still reuse rules saved during manual review.
 
-If the rule files do not exist yet, the scanner seeds them automatically from the current built-in rule packs.
+The JSON files in `keywords/` are the source of the rule catalog.
 
 The scanner automatically runs each configured search in this order:
 

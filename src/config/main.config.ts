@@ -26,7 +26,6 @@ function createJobSearchConfigs(
   return createJobSearchQueries(preferences.searchQueries, preferences.strictSearchMode).map((query) => ({
     query,
     locations: preferences.locationKeys.map((locationKey) => Location[locationKey]),
-    restrictedLocations: [...preferences.restrictedLocations],
     filters: {
       ...preferences.filters,
     },

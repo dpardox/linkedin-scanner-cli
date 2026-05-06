@@ -5,7 +5,6 @@ import { Keywords } from './keywords';
 export type JobSearchConfig = {
   query: string;
   locations: Location[];
-  restrictedLocations: string[];
   filters: Filters;
   keywords: Keywords;
   languages?: string[];

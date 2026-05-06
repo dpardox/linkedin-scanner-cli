@@ -256,7 +256,6 @@ describe('WinstonAdapter', () => {
       strictSearchMode: false,
       locationKeys: ['colombia'],
       languages: ['spa'],
-      restrictedLocations: [],
       filters: {
         easyApply: true,
       },
