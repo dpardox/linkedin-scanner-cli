@@ -27,6 +27,12 @@ describe('FrancAdapter', () => {
     expect(result).toBe('spa');
   });
 
+  test('should detect "ita" language', () => {
+    const text = 'CHI SIAMO ADENTIS Italia è un gruppo europeo di consulenza ingegneristica e operativa facente parte del Gruppo MoOngy. Presente in 14 paesi europei con oltre 8.500 dipendenti, abbiamo aperto da quattro anni la prima sede italiana a Milano e stiamo rafforzando il nostro team con persone che condividano gli stessi valori della nostra società.';
+    const result = franc.detect(normalize(text));
+    expect(result).toBe('ita');
+  });
+
   test('should return empty string for empty text', () => {
     const text = '';
     const result = franc.detect(text);

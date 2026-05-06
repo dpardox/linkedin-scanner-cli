@@ -7,7 +7,10 @@ export function createJobSearchQueries(searchQueries: string[], strictSearchMode
 
   if (!strictSearchMode) return normalizedSearchQueries;
 
-  return dedupeJobSearchQueries(normalizedSearchQueries.flatMap(createStrictAndLooseJobSearchQueries));
+  return dedupeJobSearchQueries([
+    ...createStrictJobSearchQueries(normalizedSearchQueries),
+    ...createLooseJobSearchQueries(normalizedSearchQueries),
+  ]);
 }
 
 export function normalizeJobSearchQuery(searchQuery: string): string {
@@ -18,11 +21,12 @@ export function normalizeJobSearchQuery(searchQuery: string): string {
   return trimmedSearchQuery.slice(1, -1).trim();
 }
 
-function createStrictAndLooseJobSearchQueries(searchQuery: string): string[] {
-  return [
-    createStrictJobSearchQuery(searchQuery),
-    createLooseJobSearchQuery(searchQuery),
-  ];
+function createStrictJobSearchQueries(searchQueries: string[]): string[] {
+  return searchQueries.map(createStrictJobSearchQuery);
+}
+
+function createLooseJobSearchQueries(searchQueries: string[]): string[] {
+  return searchQueries.map(createLooseJobSearchQuery);
 }
 
 function createStrictJobSearchQuery(searchQuery: string): string {

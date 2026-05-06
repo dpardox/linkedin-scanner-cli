@@ -16,7 +16,12 @@ describe('job search query helpers', () => {
   });
 
   test('should expand strict job searches before loose searches', () => {
-    expect(createJobSearchQueries(['angular'], true)).toEqual(['"angular"', 'angular']);
+    expect(createJobSearchQueries(['angular', 'react'], true)).toEqual([
+      '"angular"',
+      '"react"',
+      'angular',
+      'react',
+    ]);
   });
 
   test('should keep loose job searches when strict mode is disabled', () => {

@@ -29,12 +29,17 @@ describe('main config', () => {
     };
     const config = createScannerConfig({
       ...defaultScannerPreferences,
-      searchQueries: ['angular'],
+      searchQueries: ['angular', 'react'],
       strictSearchMode: true,
       locationKeys: ['colombia'],
     }, ruleManager as any);
 
-    expect(config.jobSearchConfigs.map(({ query }) => query)).toEqual(['"angular"', 'angular']);
+    expect(config.jobSearchConfigs.map(({ query }) => query)).toEqual([
+      '"angular"',
+      '"react"',
+      'angular',
+      'react',
+    ]);
   });
 
 });
